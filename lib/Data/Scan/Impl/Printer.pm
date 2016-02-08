@@ -96,16 +96,16 @@ sub _item_unfold {
 }
 
 sub _item_nextfold {
-  my ($self, $item) = @_;
+  my ($self, $parent) = @_;
 
-  $self->_pushLine('');
+  $self->_pushLine('') unless (substr($self->_lines->[-1], -1, 1) eq '\\');
   return
 }
 
 sub _item_end {
-  my ($self, $item) = @_;
+  my ($self, $parent) = @_;
 
-  if (my $reftype = reftype($item)) {
+  if (my $reftype = reftype($parent)) {
     #
     # We unfolded only if reftype is a true value
     #
