@@ -14,6 +14,7 @@ use Types::Standard qw/ConsumerOf/;
 # AUTHORITY
 
 our $_endfold;
+our $_nextfold;
 
 has consumer => (
                  is => 'ro',
@@ -25,6 +26,7 @@ sub process {
 
   my $consumer = $self->consumer;
   my $endfoldaddr = \$_endfold;
+  my $nextfoldaddr = \$_nextfold;
   my %seen = ();
 
   my $previous;
@@ -39,6 +41,8 @@ sub process {
     while (ref $_[0]) {
       if ($endfoldaddr == refaddr $_[0]) {
         $consumer->endfold((splice @_, 0, 2)[1])
+      } elsif ($nextfoldaddr == refaddr $_[0]) {
+        $consumer->nextfold((splice @_, 0, 2)[1])
       } else {
         last
       }
@@ -58,7 +62,7 @@ sub process {
       # Process returns eventual unfolded content
       #
       if (@unfold = $consumer->process($previous = shift)) {
-        unshift(@_, @unfold, $endfoldaddr, $previous)
+        unshift(@_, (map { $nextfoldaddr, $previous, $unfold[$_] } 0..$#unfold), $endfoldaddr, $previous)
       }
     } else {
       last

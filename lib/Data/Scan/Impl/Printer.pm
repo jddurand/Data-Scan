@@ -23,9 +23,10 @@ has unknown    => (is => 'ro', isa => Str,              default => sub { return 
 has newline    => (is => 'ro', isa => Str,              default => sub { return "\n"      });
 has color      => (is => 'ro', isa => Bool,             default => sub { return !!0       });
 
-has item_start  => (is => 'ro', isa => CodeRef, default => sub { \&_item_start });
-has item_unfold => (is => 'ro', isa => CodeRef, default => sub { \&_item_unfold });
-has item_end    => (is => 'ro', isa => CodeRef, default => sub { \&_item_end });
+has item_start    => (is => 'ro', isa => CodeRef, default => sub { \&_item_start });
+has item_unfold   => (is => 'ro', isa => CodeRef, default => sub { \&_item_unfold });
+has item_nextfold => (is => 'ro', isa => CodeRef, default => sub { \&_item_nextfold });
+has item_end      => (is => 'ro', isa => CodeRef, default => sub { \&_item_end });
 #
 # Internal attributes
 #
@@ -94,6 +95,13 @@ sub _item_unfold {
   @unfold
 }
 
+sub _item_nextfold {
+  my ($self, $item) = @_;
+
+  $self->_pushLine('');
+  return
+}
+
 sub _item_end {
   my ($self, $item) = @_;
 
@@ -129,6 +137,11 @@ sub output {
 sub endfold {
   my ($self, $item) = @_;
   return $self->item_end->($self, $item)
+}
+
+sub nextfold {
+  my ($self, $item) = @_;
+  return $self->item_nextfold->($self, $item)
 }
 
 sub end { return }

@@ -12,6 +12,7 @@ use Moo::Role;
 
 requires 'start';
 requires 'process';
+requires 'nextfold';
 requires 'endfold';
 requires 'end';
 requires 'output';
