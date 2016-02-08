@@ -3,9 +3,8 @@ use warnings FATAL => 'all';
 
 package Data::Scan;
 use Carp qw/croak/;
-use Data::Scan::Impl::_Default;
 use Moo;
-use Scalar::Util qw/refaddr/;
+use Scalar::Util qw/refaddr reftype/;
 use Types::Standard qw/ConsumerOf/;
 
 # ABSTRACT: Data::Scan
@@ -14,45 +13,58 @@ use Types::Standard qw/ConsumerOf/;
 
 # AUTHORITY
 
-our $_start;
-our $_end;
+our $_endfold;
 
 has consumer => (
                  is => 'ro',
                  isa => ConsumerOf['Data::Scan::Role::Consumer'],
-                 default => sub { Data::Scan::Impl::_Default->new }
                 );
 
 sub process {
   my ($self) = shift;
 
   my $consumer = $self->consumer;
-  my $startaddr = \$_start;
-  my $endaddr = \$_end;
+  my $endfoldaddr = \$_endfold;
+  my %seen = ();
 
   my $previous;
   my @unfold;
+  my $reftype;
+
   $consumer->start;
   while (@_) {
     #
     # Consume first all our private thingies
     #
-    while (ref($_[0])) {
-      if    ($startaddr == refaddr($_[0])) { $consumer->push((splice(@_, 0, 2))[1]) }
-      elsif ($endaddr   == refaddr($_[0])) { $consumer->pop((splice(@_, 0, 2))[1]) }
-      else                                 { last }
+    while (ref $_[0]) {
+      if ($endfoldaddr == refaddr $_[0]) {
+        $consumer->endfold((splice @_, 0, 2)[1])
+      } else {
+        last
+      }
     }
     if (@_) {
+      #
+      # Prevent infinite recursion
+      #
+      if ($reftype = reftype $_[0]) {
+        my $refaddr = refaddr $_[0];
+        if (exists $seen{$refaddr}) {
+          shift, next
+        }
+        $seen{$refaddr} = 1
+      }
+      #
+      # Process returns eventual unfolded content
+      #
       if (@unfold = $consumer->process($previous = shift)) {
-        unshift(@_, $startaddr, $previous, @unfold, $endaddr, $previous)
+        unshift(@_, @unfold, $endfoldaddr, $previous)
       }
     } else {
       last
     }
   }
-  $consumer->end;
-
-  return
+  $consumer->end
 }
 
 1;

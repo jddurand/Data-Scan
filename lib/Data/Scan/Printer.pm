@@ -17,7 +17,7 @@ extends 'Data::Scan';
 sub dspp {
   my $consumer = Data::Scan::Impl::Printer->new(%Data::Scan::Printer::Option);
   __PACKAGE__->new(consumer => $consumer)->process(@_);
-  $consumer->print
+  print $consumer->output
 }
 
 1;

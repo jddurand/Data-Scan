@@ -12,8 +12,8 @@ use Moo::Role;
 
 requires 'start';
 requires 'process';
-requires 'push';
-requires 'pop';
+requires 'endfold';
 requires 'end';
+requires 'output';
 
 1;
