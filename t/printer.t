@@ -9,7 +9,7 @@ BEGIN {
 use Marpa::R2;
 use Data::Printer;
 
-my $this = bless([ 'Level1[0]', 'Level1[1]', { 'a' => 'b'}, \undef, \undef, \\undef ], 'TEST');
+my $this = bless([ 'Level1[0]', 'Level1[1]', { 'a' => 'b', 'c' => 'd' }, \undef, \undef, \\undef ], 'TEST');
 dspp($this);
 done_testing();
 exit;

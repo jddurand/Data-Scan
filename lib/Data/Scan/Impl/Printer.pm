@@ -55,9 +55,9 @@ sub sopen {
 
   my $reftype = reftype $item;
 
-  if    ($reftype eq 'ARRAY') { $self->_pushDesc($self->indent . '['); $self->_pushLevel($reftype); $self->_pushLine() }
-  elsif ($reftype eq 'HASH')  { $self->_pushDesc($self->indent . '{'); $self->_pushLevel($reftype); $self->_pushLine() }
-  else                        { $self->_pushDesc('\\'); $self->_pushLevel($reftype) }
+  if    ($reftype eq 'ARRAY') { $self->_pushDesc('->['); $self->_pushLevel($reftype) }
+  elsif ($reftype eq 'HASH')  { $self->_pushDesc('->{'); $self->_pushLevel($reftype) }
+  else                        { $self->_pushDesc('\\');  $self->_pushLevel($reftype) }
 
   return
 }
@@ -84,28 +84,32 @@ sub sread {
     my $currentReftypePerLevel = $self->_currentReftypePerLevel->[-1];
     my $currentIndicePerLevel = $self->_currentIndicePerLevel->[-1];
     if ($currentReftypePerLevel eq 'ARRAY') {
+      $self->_pushDesc(',') if ($currentIndicePerLevel > $[);
+      $self->_pushLine;
       push(@desc, "[$currentIndicePerLevel]");
       push(@desc, $name) if $name;
-      $self->_pushLine;
+      $self->_pushDesc(join(' ', @desc));
     } elsif ($currentReftypePerLevel eq 'HASH') {
       if ($currentIndicePerLevel % 2) {
         push(@desc, $name) if $name;
+        $self->_pushDesc(join(' ', @desc));
       } else {
+        $self->_pushDesc(',') if ($currentIndicePerLevel >= 2);
+        $self->_pushLine;
         push(@desc, $name) if $name;
         push(@desc, '=>');
         push(@desc, '');
+        $self->_pushDesc(join(' ', @desc));
       }
     } else {
       push(@desc, $name) if $name;
+      $self->_pushDesc(join(' ', @desc));
     }
     $self->_currentIndicePerLevel->[-1]++
   } else {
     push(@desc, $name) if $name;
+    $self->_pushDesc(join(' ', @desc));
   }
-  #
-  # Push description
-  #
-  $self->_pushDesc(join(' ', @desc));
   #
   # Unfold
   #
@@ -113,20 +117,19 @@ sub sread {
   if    ($reftype eq 'ARRAY') { @unfold = @{$item} }
   elsif ($reftype eq 'HASH')  { @unfold = map { $_ => $item->{$_} } sort { ($a // '') cmp ($b // '') } keys %{$item} }
   elsif ($reftype)            { @unfold = ${$item} }
-  #
-  # Push a line if we unfold an ARRAY or a HASH,  and no line was already pushed
-  #
-  $self->_pushLine if ($reftype eq 'ARRAY' || $reftype eq 'HASH');
+
   @unfold
 }
 
 sub sclose {
   my ($self, $item) = @_;
 
+  $self->_popLevel;
+
   my $reftype = reftype $item;
-  if    ($reftype eq 'ARRAY') { $self->_pushDesc(']'); $self->_popLevel; $self->_pushLine }
-  elsif ($reftype eq 'HASH')  { $self->_pushDesc('}'); $self->_popLevel; $self->_pushLine }
-  else                        { $self->_popLevel; }
+  if    ($reftype eq 'ARRAY') { $self->_pushLine; $self->_pushDesc(']') }
+  elsif ($reftype eq 'HASH')  { $self->_pushLine; $self->_pushDesc('}') }
+  else                        {                                         }
 
   return
 }
