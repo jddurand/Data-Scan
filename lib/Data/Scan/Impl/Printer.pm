@@ -113,12 +113,12 @@ sub sread {
   #
   # Unfold
   #
-  my @unfold = ();
-  if    ($reftype eq 'ARRAY') { @unfold = @{$item} }
-  elsif ($reftype eq 'HASH')  { @unfold = map { $_ => $item->{$_} } sort { ($a // '') cmp ($b // '') } keys %{$item} }
-  elsif ($reftype)            { @unfold = ${$item} }
+  my $rc;
+  if    ($reftype eq 'ARRAY') { $rc = $item }
+  elsif ($reftype eq 'HASH')  { $rc = [ map { $_ => $item->{$_} } sort { ($a // '') cmp ($b // '') } keys %{$item} ] }
+  elsif ($reftype)            { $rc = [ ${$item} ] }
 
-  @unfold
+  $rc
 }
 
 sub sclose {
