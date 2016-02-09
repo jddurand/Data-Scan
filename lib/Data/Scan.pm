@@ -15,7 +15,7 @@ use Types::Standard qw/ConsumerOf/;
 
 =head1 DESCRIPTION
 
-Data::Scan is a stackfree arbitrary scanner. It has no other intelligence but scanning its arguments and asking for a consumer to deal with every item.
+Data::Scan is a stackfree scanner of arbitrary data. It has no other intelligence but scanning its arguments and asking for a consumer to deal with every item.
 
 =head1 SYNOPSIS
 
@@ -40,7 +40,7 @@ has consumer => (
 
 =head2 $class->new(consumer => ConsumerOf['Data::Scan::Role::Consumer'])
 
-Instantiate a new Data::Scan object. Takes as parameter an required consumer, that is consuming the Data::Scan::Role::Consumer role.
+Instantiate a new Data::Scan object. Takes as parameter a required consumer, that is consuming the Data::Scan::Role::Consumer role.
 
 =cut
 
