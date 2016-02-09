@@ -13,8 +13,9 @@ use Types::Standard qw/ConsumerOf/;
 
 # AUTHORITY
 
-our $_endfold;
-our $_nextfold;
+our $_open;
+our $_read;
+our $_close;
 
 has consumer => (
                  is => 'ro',
@@ -25,50 +26,65 @@ sub process {
   my ($self) = shift;
 
   my $consumer = $self->consumer;
-  my $endfoldaddr = \$_endfold;
-  my $nextfoldaddr = \$_nextfold;
+  my $openaddr = \$_open;
+  my $readaddr = \$_read;
+  my $closeaddr = \$_close;
   my %seen = ();
 
   my $previous;
-  my @unfold;
+  my @inner;
   my $reftype;
 
-  $consumer->start;
+  #
+  # Precompute some static information
+  #
+  my $secondIndice = $[+1;
+  my $thirdIndice  = $[+2;
+  my $fourthIndice = $[+3;
+  my $nbElements = scalar(@_);
+  #
+  # Start
+  #
+  $consumer->start($nbElements);
   while (@_) {
     #
-    # Consume first all our private thingies
+    # First our private thingies
     #
-    while (ref $_[0]) {
-      if ($endfoldaddr == refaddr $_[0]) {
-        $consumer->endfold((splice @_, 0, 2)[1])
-      } elsif ($nextfoldaddr == refaddr $_[0]) {
-        $consumer->nextfold((splice @_, 0, 2)[1])
-      } else {
-        last
-      }
+    while (ref $_[$[]) {
+      if    ($openaddr  == refaddr $_[$[]) { $consumer->sopen ((splice @_, $[, 3)[$secondIndice..$thirdIndice]) } # sopen(item unfolded, number of elements)
+      elsif ($readaddr  == refaddr $_[$[]) { $consumer->sread ((splice @_, $[, 3)[$secondIndice..$thirdIndice]) } # sread(item unfolded, item)
+      elsif ($closeaddr == refaddr $_[$[]) { $consumer->sclose((splice @_, $[, 2)[$secondIndice])               } # sclose(item unfolded)
+      else                                 { last }
     }
     if (@_) {
       #
       # Prevent infinite recursion
       #
-      if ($reftype = reftype $_[0]) {
-        my $refaddr = refaddr $_[0];
+      if ($reftype = reftype $_[$[]) {
+        my $refaddr = refaddr $_[$[];
         if (exists $seen{$refaddr}) {
           shift, next
         }
         $seen{$refaddr} = 1
       }
       #
-      # Process returns eventual unfolded content
+      # Consumer's sread() returns eventual inner content
       #
-      if (@unfold = $consumer->process($previous = shift)) {
-        unshift(@_, (map { $nextfoldaddr, $previous, $unfold[$_] } 0..$#unfold), $endfoldaddr, $previous)
+      if (@inner = $consumer->sread(undef, $previous = shift)) { # sread(item, undef)
+        unshift(@_,
+                $openaddr, $previous, scalar(@inner),
+                (map { $readaddr, $previous, $inner[$_] } $[..$#inner),
+                $closeaddr, $previous
+               )
       }
     } else {
       last
     }
   }
-  $consumer->end
+  #
+  # End - return value of consumer's end() is what we return
+  #
+  $consumer->end($nbElements);
 }
 
 1;

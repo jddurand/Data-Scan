@@ -16,6 +16,9 @@ use Scalar::Util 1.26 qw/reftype blessed/;
 use Types::Standard -all;
 use Types::Common::Numeric -all;
 
+#
+# External attributes
+#
 has handle     => (is => 'ro', isa => FileHandle,       default => sub { return \*STDOUT  });
 has indent     => (is => 'ro', isa => Str,              default => sub { return '  '      });
 has undef      => (is => 'ro', isa => Str,              default => sub { return 'undef'   });
@@ -34,6 +37,34 @@ has _lines                  => (is => 'rw', isa => ArrayRef,                    
 has _currentLevel           => (is => 'rw', isa => PositiveOrZeroInt,           clearer => 1, lazy => 1, default => sub { 0 });
 has _currentIndicePerLevel  => (is => 'rw', isa => ArrayRef[PositiveOrZeroInt], clearer => 1, lazy => 1, default => sub { [] });
 has _currentReftypePerLevel => (is => 'rw', isa => ArrayRef[Str],               clearer => 1, lazy => 1, default => sub { [] });
+#
+# Required methods
+#
+sub start  {
+  my ($self) = @_;
+  $self->_clear_lines;
+  $self->_clear_currentLevel;
+  $self->_clear_currentIndicePerLevel;
+  $self->_clear_currentReftypePerLevel;
+}
+
+sub end { !!1 }
+
+sub sopen {
+  my ($self, $item, $nbElements) = @_;
+  return ()
+}
+
+sub sread {
+  my ($self, $item) = @_;
+  return
+}
+
+sub sclose {
+  my ($self, $item) = @_;
+  return
+}
+
 #
 # Internal methods
 #
@@ -119,14 +150,6 @@ sub _item_end {
   return
 }
 
-sub start  {
-  my ($self) = @_;
-  $self->_clear_lines;
-  $self->_clear_currentLevel;
-  $self->_clear_currentIndicePerLevel;
-  $self->_clear_currentReftypePerLevel;
-}
-
 
 
 sub output {
@@ -143,8 +166,6 @@ sub nextfold {
   my ($self, $item) = @_;
   return $self->item_nextfold->($self, $item)
 }
-
-sub end { return }
 
 sub process {
   my ($self, $item) = @_;

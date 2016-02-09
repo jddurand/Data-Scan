@@ -11,10 +11,9 @@ use Moo::Role;
 # AUTHORITY
 
 requires 'start';
-requires 'process';
-requires 'nextfold';
-requires 'endfold';
+requires 'sopen';
+requires 'sread';
+requires 'sclose';
 requires 'end';
-requires 'output';
 
 1;
