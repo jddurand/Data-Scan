@@ -25,11 +25,6 @@ has undef      => (is => 'ro', isa => Str,              default => sub { return 
 has unknown    => (is => 'ro', isa => Str,              default => sub { return '???'     });
 has newline    => (is => 'ro', isa => Str,              default => sub { return "\n"      });
 has color      => (is => 'ro', isa => Bool,             default => sub { return !!0       });
-
-has item_start    => (is => 'ro', isa => CodeRef, default => sub { \&_item_start });
-has item_unfold   => (is => 'ro', isa => CodeRef, default => sub { \&_item_unfold });
-has item_nextfold => (is => 'ro', isa => CodeRef, default => sub { \&_item_nextfold });
-has item_end      => (is => 'ro', isa => CodeRef, default => sub { \&_item_end });
 #
 # Internal attributes
 #
@@ -50,27 +45,116 @@ sub start  {
 
 sub end { !!1 }
 
+sub output {
+  my ($self) = @_;
+  return join($self->newline, @{$self->_lines})
+}
+
 sub sopen {
-  my ($self, $item, $nbElements) = @_;
-  return ()
+  my ($self, $item) = @_;
+
+  my $reftype = reftype $item;
+
+  if    ($reftype eq 'ARRAY') { $self->_pushDesc($self->indent . '['); $self->_pushLevel($reftype); $self->_pushLine() }
+  elsif ($reftype eq 'HASH')  { $self->_pushDesc($self->indent . '{'); $self->_pushLevel($reftype); $self->_pushLine() }
+  else                        { $self->_pushDesc('\\'); $self->_pushLevel($reftype) }
+
+  return
 }
 
 sub sread {
   my ($self, $item) = @_;
-  return
+
+  my $blessed = blessed($item) // '';
+  my $reftype = reftype($item) // '';
+  my @desc = ();
+  my $pushLine = 0;
+
+  my $name;
+  if ($blessed) {
+    $name = $blessed
+  } elsif (! $reftype) {
+    #
+    # Stringification
+    #
+    $name = defined($item) ? do { eval { "$item" } // $self->unknown } : $self->undef
+  }
+
+  if ($self->_currentLevel) {
+    my $currentReftypePerLevel = $self->_currentReftypePerLevel->[-1];
+    my $currentIndicePerLevel = $self->_currentIndicePerLevel->[-1];
+    if ($currentReftypePerLevel eq 'ARRAY') {
+      push(@desc, "[$currentIndicePerLevel]");
+      push(@desc, $name) if $name;
+      $self->_pushLine;
+    } elsif ($currentReftypePerLevel eq 'HASH') {
+      if ($currentIndicePerLevel % 2) {
+        push(@desc, $name) if $name;
+      } else {
+        push(@desc, $name) if $name;
+        push(@desc, '=>');
+        push(@desc, '');
+      }
+    } else {
+      push(@desc, $name) if $name;
+    }
+    $self->_currentIndicePerLevel->[-1]++
+  } else {
+    push(@desc, $name) if $name;
+  }
+  #
+  # Push description
+  #
+  $self->_pushDesc(join(' ', @desc));
+  #
+  # Unfold
+  #
+  my @unfold = ();
+  if    ($reftype eq 'ARRAY') { @unfold = @{$item} }
+  elsif ($reftype eq 'HASH')  { @unfold = map { $_ => $item->{$_} } sort { ($a // '') cmp ($b // '') } keys %{$item} }
+  elsif ($reftype)            { @unfold = ${$item} }
+  #
+  # Push a line if we unfold an ARRAY or a HASH,  and no line was already pushed
+  #
+  $self->_pushLine if ($reftype eq 'ARRAY' || $reftype eq 'HASH');
+  @unfold
 }
 
 sub sclose {
   my ($self, $item) = @_;
+
+  my $reftype = reftype $item;
+  if    ($reftype eq 'ARRAY') { $self->_pushDesc(']'); $self->_popLevel; $self->_pushLine }
+  elsif ($reftype eq 'HASH')  { $self->_pushDesc('}'); $self->_popLevel; $self->_pushLine }
+  else                        { $self->_popLevel; }
+
   return
 }
 
 #
 # Internal methods
 #
+sub _pushLevel {
+  my ($self, $reftype) = @_;
+
+  push(@{$self->_currentReftypePerLevel}, $reftype);
+  push(@{$self->_currentIndicePerLevel}, $reftype eq 'ARRAY' ? $[ : 0);       # Only used for ARRAY
+  $self->_currentLevel($self->_currentLevel + 1);
+  return
+}
+
+sub _popLevel {
+  my ($self) = @_;
+
+  pop(@{$self->_currentReftypePerLevel});
+  pop(@{$self->_currentIndicePerLevel});
+  $self->_currentLevel($self->_currentLevel - 1);
+  return
+}
+
 sub _pushLine {
-  my ($self, $desc) = @_;
-  push(@{$self->_lines}, ($self->indent x $self->_currentLevel) . $desc);
+  my ($self) = @_;
+  push(@{$self->_lines}, ($self->indent x $self->_currentLevel));
   return
 }
 
@@ -78,100 +162,6 @@ sub _pushDesc {
   my ($self, $desc) = @_;
   $self->_lines->[-1] .= $desc;
   return
-}
-#
-# Default callbacks
-#
-sub _item_start {
-  my ($self, $item) = @_;
-
-  my $header = '';
-  if ($self->_currentLevel) {
-    if ($self->_currentReftypePerLevel->[-1] eq 'ARRAY') {
-      my $currentIndicePerLevel = $self->_currentIndicePerLevel->[-1];
-      $header = "[$currentIndicePerLevel] ";
-      $self->_currentIndicePerLevel->[-1] = $currentIndicePerLevel + 1;
-    }
-  }
-
-  if (my $reftype = reftype $item) {
-    my $blessed = blessed($item) // '';
-    if    ($reftype eq 'ARRAY') { $self->_pushLine("$header$blessed\[") }
-    elsif ($reftype eq 'HASH')  { $self->_pushLine("$header$blessed\{") }
-    else                        { $self->_pushDesc("$header\\$blessed") }
-  } else {
-    if (defined($item)) {
-      $self->_pushDesc($header . do { eval { "$item" } // $self->unknown })
-    } else {
-      $self->_pushDesc($header . $self->undef )
-    }
-  }
-  return;
-}
-
-sub _item_unfold {
-  my ($self, $item) = @_;
-
-  my @unfold = ();
-  my $reftype = reftype($item);
-
-  if ($reftype) {
-    if    ($reftype eq 'ARRAY') { @unfold = @{$item} }
-    elsif ($reftype eq 'HASH')  { @unfold = sort { ($a // '') cmp ($b // '')} keys %{$item} }
-    else                        { @unfold = ${$_[1]} }
-    push(@{$self->_currentReftypePerLevel}, $reftype);
-    push(@{$self->_currentIndicePerLevel}, $[);       # Only used for ARRAY
-    $self->_currentLevel($self->_currentLevel + 1);
-  }
-  @unfold
-}
-
-sub _item_nextfold {
-  my ($self, $parent) = @_;
-
-  $self->_pushLine('') unless (substr($self->_lines->[-1], -1, 1) eq '\\');
-  return
-}
-
-sub _item_end {
-  my ($self, $parent) = @_;
-
-  if (my $reftype = reftype($parent)) {
-    #
-    # We unfolded only if reftype is a true value
-    #
-    if    ($reftype eq 'ARRAY') { $self->_pushLine("\]") }
-    elsif ($reftype eq 'HASH')  { $self->_pushLine("\}") }
-    else                        {                        }
-  }
-  pop(@{$self->_currentReftypePerLevel});
-  pop(@{$self->_currentIndicePerLevel});
-  $self->_currentLevel($self->_currentLevel - 1);
-  return
-}
-
-
-
-sub output {
-  my ($self) = @_;
-  return join($self->newline, @{$self->_lines})
-}
-
-sub endfold {
-  my ($self, $item) = @_;
-  return $self->item_end->($self, $item)
-}
-
-sub nextfold {
-  my ($self, $item) = @_;
-  return $self->item_nextfold->($self, $item)
-}
-
-sub process {
-  my ($self, $item) = @_;
-
-  $self->_item_start($item);
-  return $self->item_unfold->($self, $item);
 }
 
 with 'Data::Scan::Role::Consumer';
