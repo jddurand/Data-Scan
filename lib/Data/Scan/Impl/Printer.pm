@@ -25,6 +25,7 @@ has undef      => (is => 'ro', isa => Str,              default => sub { return 
 has unknown    => (is => 'ro', isa => Str,              default => sub { return '???'     });
 has newline    => (is => 'ro', isa => Str,              default => sub { return "\n"      });
 has color      => (is => 'ro', isa => Bool,             default => sub { return !!0       });
+has colors     => (is => 'ro', isa => HashRef,          default => sub { return {}        });
 #
 # Internal attributes
 #
@@ -58,12 +59,12 @@ sub sopen {
   my $reftype = reftype $item;
   my $blessed = blessed $item;
 
-  if    ($blessed)            { $self->_pushDesc('->') }
+  $self->_pushDesc('->') if $blessed;
+  if    ($reftype eq 'ARRAY') { $self->_pushDesc('[')  }
+  elsif ($reftype eq 'HASH')  { $self->_pushDesc('{')  }
+  else                        { $self->_pushDesc('\\') }
 
-  if    ($reftype eq 'ARRAY') { $self->_pushDesc('['); $self->_pushLevel($reftype) }
-  elsif ($reftype eq 'HASH')  { $self->_pushDesc('{'); $self->_pushLevel($reftype) }
-  else                        { $self->_pushDesc('\\');  $self->_pushLevel($reftype) }
-
+  $self->_pushLevel($reftype);
   return
 }
 
@@ -75,7 +76,6 @@ sub sclose {
   my $reftype = reftype $item;
   if    ($reftype eq 'ARRAY') { $self->_pushLine; $self->_pushDesc(']') }
   elsif ($reftype eq 'HASH')  { $self->_pushLine; $self->_pushDesc('}') }
-  else                        {                                         }
 
   return
 }
@@ -86,20 +86,17 @@ sub sread {
   my $refaddr = refaddr($item);
   my $blessed = blessed($item) // '';
   my $reftype = reftype($item) // '';
-  my @desc = ();
-  my $pushLine = 0;
-
-  my $name;
+  #
+  # See how this can be displayed
+  #
+  my $name = '';
   if ($blessed) {
     $name = $blessed
   } elsif (! $reftype) {
-    #
-    # Stringification
-    #
     $name = defined($item) ? do { eval { "$item" } // $self->unknown } : $self->undef
   }
   #
-  # Already scanned ?
+  # Append adress to the name if already scanned
   #
   my $alreadyScanned;
   if ($refaddr) {
@@ -112,39 +109,24 @@ sub sread {
     }
   }
   $name .= "($alreadyScanned)" if $alreadyScanned;
-
+  #
+  # Push a newline and prefix with indice if in a fold
+  #
   if ($self->_currentLevel) {
     my $currentReftypePerLevel = $self->_currentReftypePerLevel->[-1];
     my $currentIndicePerLevel = $self->_currentIndicePerLevel->[-1];
-    if ($currentReftypePerLevel eq 'ARRAY') {
-      $self->_pushDesc(',') if ($currentIndicePerLevel > $[);
+    if ($currentReftypePerLevel eq 'ARRAY' || $currentReftypePerLevel eq 'HASH') {
       $self->_pushLine;
-      push(@desc, "[$currentIndicePerLevel]");
-      push(@desc, $name) if $name;
-      $self->_pushDesc(join(' ', @desc));
-    } elsif ($currentReftypePerLevel eq 'HASH') {
-      if ($currentIndicePerLevel % 2) {
-        push(@desc, $name) if $name;
-        $self->_pushDesc(join(' ', @desc));
-      } else {
-        $self->_pushDesc(',') if ($currentIndicePerLevel >= 2);
-        $self->_pushLine;
-        push(@desc, $name) if $name;
-        push(@desc, '=>');
-        push(@desc, '');
-        $self->_pushDesc(join(' ', @desc));
-      }
-    } else {
-      push(@desc, $name) if $name;
-      $self->_pushDesc(join(' ', @desc));
+      $self->_pushDesc("[$currentIndicePerLevel] ");
     }
     $self->_currentIndicePerLevel->[-1]++
-  } else {
-    push(@desc, $name) if $name;
-    $self->_pushDesc(join(' ', @desc));
   }
   #
-  # Unfold
+  # Push name
+  #
+  $self->_pushDesc($name);
+  #
+  # Prepare return value
   #
   my $rc;
   if ($reftype && ! $alreadyScanned) {
@@ -191,6 +173,11 @@ sub _pushDesc {
   my ($self, $desc) = @_;
   $self->_lines->[-1] .= $desc;
   return
+}
+
+sub _currentDesc {
+  my ($self) = @_;
+  return $self->_lines->[-1]
 }
 
 with 'Data::Scan::Role::Consumer';
