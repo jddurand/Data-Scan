@@ -13,6 +13,7 @@ use Data::Dumper;
 use Moo;
 use SUPER;
 use Scalar::Util 1.26 qw/reftype refaddr blessed/;
+BEGIN { eval 'use Win32::Console::ANSI; 1' }  # Will/Should success only on Win32
 use Term::ANSIColor;
 use Types::Standard -all;
 use Types::Common::Numeric -all;
@@ -25,7 +26,7 @@ has indent     => (is => 'ro', isa => Str,              default => sub { return 
 has undef      => (is => 'ro', isa => Str,              default => sub { return 'undef'   });
 has unknown    => (is => 'ro', isa => Str,              default => sub { return '???'     });
 has newline    => (is => 'ro', isa => Str,              default => sub { return "\n"      });
-has ansicolor  => (is => 'ro', isa => Bool,             default => sub { return !!0       });
+has ansicolor  => (is => 'ro', isa => Bool,             default => sub { return !!1       });
 has colors     => (is => 'ro', isa => HashRef,          default => sub { return {
                                                                                  blessed => 'blue',
                                                                                  ref_start => 'yellow',
