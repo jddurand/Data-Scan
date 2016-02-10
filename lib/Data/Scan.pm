@@ -2,16 +2,17 @@ use strict;
 use warnings FATAL => 'all';
 
 package Data::Scan;
-use Carp qw/croak/;
-use Moo;
-use Scalar::Util qw/refaddr reftype/;
-use Types::Standard qw/ConsumerOf/;
 
 # ABSTRACT: Data::Scan - Stackfree arbitrary data scanner
 
 # VERSION
 
 # AUTHORITY
+
+use Carp qw/croak/;
+use Moo;
+use Scalar::Util qw/refaddr reftype/;
+use Types::Standard qw/ConsumerOf/;
 
 =head1 DESCRIPTION
 

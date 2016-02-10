@@ -14,7 +14,12 @@ use IO::Interactive::Tiny;
 use Moo;
 use Perl::OSType qw/is_os_type/;
 my $_HAVE_Win32__Console__ANSI;
-BEGIN { $_HAVE_Win32__Console__ANSI = eval 'use Win32::Console::ANSI; 1;' }  # nocritic - will/Should success only on Win32
+BEGIN {
+  #
+  # Will/Should success only on Win32
+  #
+  $_HAVE_Win32__Console__ANSI = eval 'use Win32::Console::ANSI; 1;' ## no critic qw/BuiltinFunctions::ProhibitStringyEval/
+}
 use Scalar::Util 1.26 qw/reftype refaddr looks_like_number/;
 use Term::ANSIColor;
 use Types::Standard -all;
@@ -201,7 +206,7 @@ sub sread {
       # Otherwise stringify if possible
       #
       if (defined($item)) {
-        my $string = eval { "$item" };
+        my $string = eval { "$item" }; ## no critic qw/BuiltinFunctions::ProhibitStringyEval/
         if (defined($string)) {
           $self->_pushDesc('string', $string);
         } else {
