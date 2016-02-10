@@ -1,0 +1,95 @@
+=pod
+
+=encoding UTF-8
+
+=head1 NAME
+
+Data::Scan - Data::Scan - Stackfree arbitrary data scanner
+
+=head1 VERSION
+
+version 0.001
+
+=head1 SYNOPSIS
+
+    use strict;
+    use warnings FATAL => 'all';
+    use Data::Scan;
+    use Data::Scan::Impl::Printer;  # Basic example that is doing an indented print
+
+    my $this = bless([ 'var1', 'var2', {'a' => 'b', 'c' => 'd'}, \undef, \\undef, [] ], 'TEST');
+    my $consumer = Data::Scan::Impl::Printer->new;
+    Data::Scan->new(consumer => $consumer)->process($this);
+    print $consumer->output;
+
+=head1 DESCRIPTION
+
+Data::Scan is a stackfree scanner of arbitrary data. It has no other intelligence but scanning its arguments and asking for a consumer to deal with every item.
+
+=head1 SUBROUTINES/METHODS
+
+=head2 $class->new(consumer => ConsumerOf['Data::Scan::Role::Consumer'])
+
+Instantiate a new Data::Scan object. Takes as parameter a required consumer, that is consuming the Data::Scan::Role::Consumer role.
+
+=head2 $self->process(@arguments)
+
+Scan over all items in @arguments and will call the consumer with these five methods:
+
+=over
+
+=item $consumer->start
+
+Indicates to the consumer that scanning is starting. Return value is ignored.
+
+=item $consumer->sopen($item)
+
+Indicates to the consumer that an unfold of $item is starting. Return value is ignored.
+
+=item $consumer->sread($item)
+
+Indicates to the consumer that he should take over $item. If the consumer is deciding to unfold it (typically when this is an ARRAY or a HASH reference), it should return an array reference containing the unfolded content. Anything but an an array reference means it has not been unfolded.
+
+The consumer has full control on the workflow and can decide to unfold or not whatever is meaningful to him.
+
+=item $consumer->sclose($item)
+
+Indicates to the consumer that an unfold of $item is ending. Return value is ignored.
+
+=item $consumer->end
+
+Indicates to the consumer that scanning is ending.
+
+=back
+
+=for :stopwords cpan testmatrix url annocpan anno bugtracker rt cpants kwalitee diff irc mailto metadata placeholders metacpan
+
+=head1 SUPPORT
+
+=head2 Bugs / Feature Requests
+
+Please report any bugs or feature requests through the issue tracker
+at L<https://rt.cpan.org/Public/Dist/Display.html?Name=Data-Scan>.
+You will be notified automatically of any progress on your issue.
+
+=head2 Source Code
+
+This is open source software.  The code repository is available for
+public review and contribution under the terms of the license.
+
+L<https://github.com/jddurand/data-scan>
+
+  git clone git://github.com/jddurand/data-scan.git
+
+=head1 AUTHOR
+
+Jean-Damien Durand <jeandamiendurand@free.fr>
+
+=head1 COPYRIGHT AND LICENSE
+
+This software is copyright (c) 2016 by Jean-Damien Durand.
+
+This is free software; you can redistribute it and/or modify it under
+the same terms as the Perl 5 programming language system itself.
+
+=cut

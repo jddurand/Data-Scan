@@ -1,0 +1,22 @@
+Changelog for Data-Scan
+
+0.001 2016-02-10T18:25:58
+ [Jean-Damien Durand <jeandamiendurand@free.fr>]
+ - dzil xtest
+ - dzil compliance
+ - dist.ini: ContributorsFromGit replaced by Git::Contributors
+ - Impl/Printer.pm: show_indice split
+ - Customizations: dev+
+ - Win32::Console::ANSI dependency
+ - Impl/Printer.pm: unknown should be seen as it names indicated
+ - Impl/Printer.pm: colors
+ - Impl/Printer.pm: consider unfolded contents the same in any case
+ - Work on recursion prevention
+ - POD: typo
+ - POD + use an array reference to handle the case of empty unfolded
+   content
+ - t+
+ - changing API: dev+
+ - dev+
+ - dev+: proof of concept ok
+ - Import
