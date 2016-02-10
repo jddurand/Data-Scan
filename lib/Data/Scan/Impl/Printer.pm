@@ -14,7 +14,7 @@ use IO::Interactive::Tiny;
 use Moo;
 use Perl::OSType qw/is_os_type/;
 my $_HAVE_Win32__Console__ANSI;
-BEGIN { $_HAVE_Win32__Console__ANSI = eval 'use Win32::Console::ANSI; 1' }  # Will/Should success only on Win32
+BEGIN { $_HAVE_Win32__Console__ANSI = eval 'use Win32::Console::ANSI; 1;' }  # nocritic - will/Should success only on Win32
 use Scalar::Util 1.26 qw/reftype refaddr looks_like_number/;
 use Term::ANSIColor;
 use Types::Standard -all;

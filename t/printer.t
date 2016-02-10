@@ -15,7 +15,7 @@ my $this = bless([ 'var1',
                     'k' => [],
                     'l' => \undef,
                     'm' => \\undef,
-                    'Non-äscii' => 'chàracter'
+                    'Non-\x{e4}scii' => 'ch\x{e0}racter'
                    }
                  ], 'Test');
 push(@{$this}, { self => $this });
