@@ -13,6 +13,7 @@ use Data::Dumper;
 use Moo;
 use SUPER;
 use Scalar::Util 1.26 qw/reftype refaddr blessed/;
+use Term::ANSIColor;
 use Types::Standard -all;
 use Types::Common::Numeric -all;
 
@@ -24,8 +25,19 @@ has indent     => (is => 'ro', isa => Str,              default => sub { return 
 has undef      => (is => 'ro', isa => Str,              default => sub { return 'undef'   });
 has unknown    => (is => 'ro', isa => Str,              default => sub { return '???'     });
 has newline    => (is => 'ro', isa => Str,              default => sub { return "\n"      });
-has color      => (is => 'ro', isa => Bool,             default => sub { return !!0       });
-has colors     => (is => 'ro', isa => HashRef,          default => sub { return {}        });
+has ansicolor  => (is => 'ro', isa => Bool,             default => sub { return !!0       });
+has colors     => (is => 'ro', isa => HashRef,          default => sub { return {
+                                                                                 blessed => 'blue',
+                                                                                 ref_start => 'yellow',
+                                                                                 ref_end => 'yellow',
+                                                                                 indice => 'magenta',
+                                                                                 undef => 'red',
+                                                                                 unknown => 'red',
+                                                                                 adress => 'black',
+                                                                                 string => 'cyan',
+                                                                                 code    => 'green'
+                                                                                }
+                                                                       });
 #
 # Internal attributes
 #
@@ -59,10 +71,9 @@ sub sopen {
   my $reftype = reftype $item;
   my $blessed = blessed $item;
 
-  $self->_pushDesc('->') if $blessed;
-  if    ($reftype eq 'ARRAY') { $self->_pushDesc('[')  }
-  elsif ($reftype eq 'HASH')  { $self->_pushDesc('{')  }
-  else                        { $self->_pushDesc('\\') }
+  if    ($reftype eq 'ARRAY') { $self->_pushDesc('ref_start', '[')  }
+  elsif ($reftype eq 'HASH')  { $self->_pushDesc('ref_start', '{')  }
+  else                        { $self->_pushDesc('ref_start', '\\') }
 
   $self->_pushLevel($reftype);
   return
@@ -74,8 +85,8 @@ sub sclose {
   $self->_popLevel;
 
   my $reftype = reftype $item;
-  if    ($reftype eq 'ARRAY') { $self->_pushLine; $self->_pushDesc(']') }
-  elsif ($reftype eq 'HASH')  { $self->_pushLine; $self->_pushDesc('}') }
+  if    ($reftype eq 'ARRAY') { $self->_pushLine; $self->_pushDesc('ref_end', ']') }
+  elsif ($reftype eq 'HASH')  { $self->_pushLine; $self->_pushDesc('ref_end', '}') }
 
   return
 }
@@ -86,14 +97,35 @@ sub sread {
   my $refaddr = refaddr($item);
   my $blessed = blessed($item) // '';
   my $reftype = reftype($item) // '';
+
+  #
+  # Push a newline and prefix with indice if in a fold
+  #
+  if ($self->_currentLevel) {
+    my $currentReftypePerLevel = $self->_currentReftypePerLevel->[-1];
+    my $currentIndicePerLevel = $self->_currentIndicePerLevel->[-1];
+    if ($currentReftypePerLevel eq 'ARRAY' || $currentReftypePerLevel eq 'HASH') {
+      $self->_pushLine;
+      $self->_pushDesc('indice', "[$currentIndicePerLevel] ");
+    }
+    $self->_currentIndicePerLevel->[-1]++
+  }
   #
   # See how this can be displayed
   #
-  my $name = '';
   if ($blessed) {
-    $name = $blessed
+    $self->_pushDesc('string', $blessed);
   } elsif (! $reftype) {
-    $name = defined($item) ? do { eval { "$item" } // $self->unknown } : $self->undef
+    if (defined($item)) {
+      my $string = eval { "$item" };
+      if (defined($string)) {
+        $self->_pushDesc('string', $string);
+      } else {
+        $self->_pushDesc('string', $self->unknown);
+      }
+    } else {
+      $self->_pushDesc('undef', $self->undef);
+    }
   }
   #
   # Append adress to the name if already scanned
@@ -107,24 +139,16 @@ sub sread {
     } else {
       $seen->{$hex} = 1
     }
-  }
-  $name .= "($alreadyScanned)" if $alreadyScanned;
-  #
-  # Push a newline and prefix with indice if in a fold
-  #
-  if ($self->_currentLevel) {
-    my $currentReftypePerLevel = $self->_currentReftypePerLevel->[-1];
-    my $currentIndicePerLevel = $self->_currentIndicePerLevel->[-1];
-    if ($currentReftypePerLevel eq 'ARRAY' || $currentReftypePerLevel eq 'HASH') {
-      $self->_pushLine;
-      $self->_pushDesc("[$currentIndicePerLevel] ");
-    }
-    $self->_currentIndicePerLevel->[-1]++
+    $self->_pushDesc('adress', "($hex)")
   }
   #
-  # Push name
+  # Blessed ?
   #
-  $self->_pushDesc($name);
+  $self->_pushDesc('blessed', '->') if $blessed;
+  #
+  # Already scanned ?
+  #
+  # $self->_pushDesc('adress', "*$alreadyScanned") if $alreadyScanned;
   #
   # Prepare return value
   #
@@ -170,8 +194,17 @@ sub _pushLine {
 }
 
 sub _pushDesc {
-  my ($self, $desc) = @_;
-  $self->_lines->[-1] .= $desc;
+  my ($self, $what, $desc) = @_;
+  if ($self->ansicolor) {
+    my $color = $self->colors->{$what};
+    if ($color) {
+      $self->_lines->[-1] .= colored($desc, $color);
+    } else {
+      $self->_lines->[-1] .= $desc;
+    }
+  } else {
+    $self->_lines->[-1] .= $desc;
+  }
   return
 }
 
