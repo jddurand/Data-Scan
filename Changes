@@ -1,7 +1,8 @@
 Changelog for Data-Scan
 
-0.001 2016-02-10T18:25:58
+0.001 2016-02-10T18:31:01
  [Jean-Damien Durand <jeandamiendurand@free.fr>]
+ - Initial release
  - dzil xtest
  - dzil compliance
  - dist.ini: ContributorsFromGit replaced by Git::Contributors
