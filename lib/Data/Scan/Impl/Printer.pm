@@ -31,50 +31,51 @@ my $_NON_ASCII_PRINT_RE = qr/[^$_ASCII_PRINT]/;
 #
 # External attributes
 #
-has handle         => (is => 'ro', isa => FileHandle,       default => sub { return \*STDOUT  });
-has indent         => (is => 'ro', isa => Str,              default => sub { return '  '      });
-has undef          => (is => 'ro', isa => Str,              default => sub { return 'undef'   });
-has unknown        => (is => 'ro', isa => Str,              default => sub { return '???'     });
-has newline        => (is => 'ro', isa => Str,              default => sub { return "\n"      });
-has ansicolor      => (is => 'ro', isa => Bool,             default => sub { return !!1       });
-has array_start    => (is => 'ro', isa => Str,              default => sub { return ' ['       });
-has array_end      => (is => 'ro', isa => Str,              default => sub { return ']'       });
-has hash_start     => (is => 'ro', isa => Str,              default => sub { return ' {'       });
-has hash_end       => (is => 'ro', isa => Str,              default => sub { return '}'       });
-has hash_separator => (is => 'ro', isa => Str,              default => sub { return ' => '    });
-has indice_start   => (is => 'ro', isa => Str,              default => sub { return '['       });
-has indice_end     => (is => 'ro', isa => Str,              default => sub { return '] '      });
-has address_start  => (is => 'ro', isa => Str,              default => sub { return '('       });
-has address_end    => (is => 'ro', isa => Str,              default => sub { return ')'       });
-has blessed        => (is => 'ro', isa => Str,              default => sub { return ''        });
-has ref_start      => (is => 'ro', isa => Str,              default => sub { return '\\'      });
-has show_address   => (is => 'ro', isa => Bool,             default => sub { return !!0       });
-has show_indice    => (is => 'ro', isa => Bool,             default => sub { return !!0       });
-has colors         => (is => 'ro', isa => HashRef,          default => sub { return {
-                                                                                     # string          => '',
-                                                                                     # blessed         => 'magenta',
-                                                                                     array_start     => 'bold yellow',
-                                                                                     array_end       => 'bold yellow',
+has handle            => (is => 'ro', isa => FileHandle,       default => sub { return \*STDOUT  });
+has indent            => (is => 'ro', isa => Str,              default => sub { return '  '      });
+has undef             => (is => 'ro', isa => Str,              default => sub { return 'undef'   });
+has unknown           => (is => 'ro', isa => Str,              default => sub { return '???'     });
+has newline           => (is => 'ro', isa => Str,              default => sub { return "\n"      });
+has ansicolor         => (is => 'ro', isa => Bool,             default => sub { return !!1       });
+has array_start       => (is => 'ro', isa => Str,              default => sub { return ' ['       });
+has array_end         => (is => 'ro', isa => Str,              default => sub { return ']'       });
+has hash_start        => (is => 'ro', isa => Str,              default => sub { return ' {'       });
+has hash_end          => (is => 'ro', isa => Str,              default => sub { return '}'       });
+has hash_separator    => (is => 'ro', isa => Str,              default => sub { return ' => '    });
+has indice_start      => (is => 'ro', isa => Str,              default => sub { return '['       });
+has indice_end        => (is => 'ro', isa => Str,              default => sub { return '] '      });
+has address_start     => (is => 'ro', isa => Str,              default => sub { return '('       });
+has address_end       => (is => 'ro', isa => Str,              default => sub { return ')'       });
+has blessed           => (is => 'ro', isa => Str,              default => sub { return ''        });
+has ref_start         => (is => 'ro', isa => Str,              default => sub { return '\\'      });
+has show_address      => (is => 'ro', isa => Bool,             default => sub { return !!0       });
+has show_array_indice => (is => 'ro', isa => Bool,             default => sub { return !!1       });
+has show_hash_indice  => (is => 'ro', isa => Bool,             default => sub { return !!0       });
+has colors            => (is => 'ro', isa => HashRef,          default => sub { return {
+                                                                                        # string          => '',
+                                                                                        # blessed         => 'magenta',
+                                                                                        array_start     => 'bold yellow',
+                                                                                        array_end       => 'bold yellow',
 
-                                                                                     hash_start      => 'bold yellow',
-                                                                                     hash_key        => 'bold yellow',
-                                                                                     hash_separator  => 'magenta',
-                                                                                     hash_value      => 'bold yellow',
-                                                                                     hash_end        => 'bold yellow',
+                                                                                        hash_start      => 'bold yellow',
+                                                                                        hash_key        => 'bold yellow',
+                                                                                        hash_separator  => 'magenta',
+                                                                                        hash_value      => 'bold yellow',
+                                                                                        hash_end        => 'bold yellow',
 
-                                                                                     ref_start       => 'bold yellow',
+                                                                                        ref_start       => 'bold yellow',
 
-                                                                                     indice_start    => 'magenta',
-                                                                                     indice_value    => 'magenta',
-                                                                                     indice_end      => 'magenta',
+                                                                                        indice_start    => 'magenta',
+                                                                                        indice_value    => 'magenta',
+                                                                                        indice_end      => 'magenta',
 
-                                                                                     undef           => 'bold red',
-                                                                                     unknown         => 'bold red',
-                                                                                     address         => ['magenta on_black'],
-                                                                                     code            => 'green',
-                                                                                     already_scanned => 'blink green',
-                                                                                    }
-                                                                           });
+                                                                                        undef           => 'bold red',
+                                                                                        unknown         => 'bold red',
+                                                                                        address         => ['magenta on_black'],
+                                                                                        code            => 'green',
+                                                                                        already_scanned => 'blink green',
+                                                                                       }
+                                                                              });
 #
 # Internal attributes
 #
@@ -143,16 +144,19 @@ sub sread {
     my $currentReftypePerLevel = $self->_currentReftypePerLevel->[-1];
     my $currentIndicePerLevel = $self->_currentIndicePerLevel->[-1];
     if ($currentReftypePerLevel eq 'ARRAY' or $currentReftypePerLevel eq 'HASH') {
+      my $show_indice;
       if ($currentReftypePerLevel eq 'ARRAY') {
         $self->_pushLine;
+        $show_indice = $self->show_array_indice;
       } else {
         if ($currentIndicePerLevel % 2) {
           $self->_pushDesc('hash_separator', $self->hash_separator);
         } else {
           $self->_pushLine;
         }
+        $show_indice = $self->show_hash_indice;
       }
-      if ($self->show_indice) {
+      if ($show_indice) {
         $self->_pushDesc('indice_start', $self->indice_start);
         $self->_pushDesc('indice_value', $currentIndicePerLevel);
         $self->_pushDesc('indice_end', $self->indice_end);
