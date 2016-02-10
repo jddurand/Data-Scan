@@ -10,35 +10,71 @@ package Data::Scan::Impl::Printer;
 # AUTHORITY
 
 use Data::Dumper;
+use IO::Interactive::Tiny;
 use Moo;
-use SUPER;
-use Scalar::Util 1.26 qw/reftype refaddr blessed/;
-BEGIN { eval 'use Win32::Console::ANSI; 1' }  # Will/Should success only on Win32
+use Perl::OSType qw/is_os_type/;
+my $_HAVE_Win32__Console__ANSI;
+BEGIN { $_HAVE_Win32__Console__ANSI = eval 'use Win32::Console::ANSI; 1' }  # Will/Should success only on Win32
+use Scalar::Util 1.26 qw/reftype refaddr looks_like_number/;
 use Term::ANSIColor;
 use Types::Standard -all;
 use Types::Common::Numeric -all;
-
+#
+# Can ansi colors be used ?
+#
+my $_CAN_COLOR = IO::Interactive::Tiny::is_interactive() ? (is_os_type('Windows') ? $_HAVE_Win32__Console__ANSI : 1) : 0;
+#
+# My way of matching only printable ASCII characters
+#
+my $_ASCII_PRINT = quotemeta(join('', map { chr } 33..126));
+my $_NON_ASCII_PRINT_RE = qr/[^$_ASCII_PRINT]/;
 #
 # External attributes
 #
-has handle     => (is => 'ro', isa => FileHandle,       default => sub { return \*STDOUT  });
-has indent     => (is => 'ro', isa => Str,              default => sub { return '  '      });
-has undef      => (is => 'ro', isa => Str,              default => sub { return 'undef'   });
-has unknown    => (is => 'ro', isa => Str,              default => sub { return '???'     });
-has newline    => (is => 'ro', isa => Str,              default => sub { return "\n"      });
-has ansicolor  => (is => 'ro', isa => Bool,             default => sub { return !!1       });
-has colors     => (is => 'ro', isa => HashRef,          default => sub { return {
-                                                                                 blessed => 'blue',
-                                                                                 ref_start => 'yellow',
-                                                                                 ref_end => 'yellow',
-                                                                                 indice => 'magenta',
-                                                                                 undef => 'red',
-                                                                                 unknown => 'red',
-                                                                                 adress => 'black',
-                                                                                 string => 'cyan',
-                                                                                 code    => 'green'
-                                                                                }
-                                                                       });
+has handle         => (is => 'ro', isa => FileHandle,       default => sub { return \*STDOUT  });
+has indent         => (is => 'ro', isa => Str,              default => sub { return '  '      });
+has undef          => (is => 'ro', isa => Str,              default => sub { return 'undef'   });
+has unknown        => (is => 'ro', isa => Str,              default => sub { return '???'     });
+has newline        => (is => 'ro', isa => Str,              default => sub { return "\n"      });
+has ansicolor      => (is => 'ro', isa => Bool,             default => sub { return !!1       });
+has array_start    => (is => 'ro', isa => Str,              default => sub { return ' ['       });
+has array_end      => (is => 'ro', isa => Str,              default => sub { return ']'       });
+has hash_start     => (is => 'ro', isa => Str,              default => sub { return ' {'       });
+has hash_end       => (is => 'ro', isa => Str,              default => sub { return '}'       });
+has hash_separator => (is => 'ro', isa => Str,              default => sub { return ' => '    });
+has indice_start   => (is => 'ro', isa => Str,              default => sub { return '['       });
+has indice_end     => (is => 'ro', isa => Str,              default => sub { return '] '      });
+has address_start  => (is => 'ro', isa => Str,              default => sub { return '('       });
+has address_end    => (is => 'ro', isa => Str,              default => sub { return ')'       });
+has blessed        => (is => 'ro', isa => Str,              default => sub { return ''        });
+has ref_start      => (is => 'ro', isa => Str,              default => sub { return '\\'      });
+has show_address   => (is => 'ro', isa => Bool,             default => sub { return !!0       });
+has show_indice    => (is => 'ro', isa => Bool,             default => sub { return !!0       });
+has colors         => (is => 'ro', isa => HashRef,          default => sub { return {
+                                                                                     # string          => '',
+                                                                                     # blessed         => 'magenta',
+                                                                                     array_start     => 'bold yellow',
+                                                                                     array_end       => 'bold yellow',
+
+                                                                                     hash_start      => 'bold yellow',
+                                                                                     hash_key        => 'bold yellow',
+                                                                                     hash_separator  => 'magenta',
+                                                                                     hash_value      => 'bold yellow',
+                                                                                     hash_end        => 'bold yellow',
+
+                                                                                     ref_start       => 'bold yellow',
+
+                                                                                     indice_start    => 'magenta',
+                                                                                     indice_value    => 'magenta',
+                                                                                     indice_end      => 'magenta',
+
+                                                                                     undef           => 'bold red',
+                                                                                     unknown         => 'bold red',
+                                                                                     address         => ['magenta on_black'],
+                                                                                     code            => 'green',
+                                                                                     already_scanned => 'blink green',
+                                                                                    }
+                                                                           });
 #
 # Internal attributes
 #
@@ -70,11 +106,11 @@ sub sopen {
   my ($self, $item) = @_;
 
   my $reftype = reftype $item;
-  my $blessed = blessed $item;
+  my $blessed = Scalar::Util::blessed $item;
 
-  if    ($reftype eq 'ARRAY') { $self->_pushDesc('ref_start', '[')  }
-  elsif ($reftype eq 'HASH')  { $self->_pushDesc('ref_start', '{')  }
-  else                        { $self->_pushDesc('ref_start', '\\') }
+  if    ($reftype eq 'ARRAY') { $self->_pushDesc('array_start', $self->array_start) }
+  elsif ($reftype eq 'HASH')  { $self->_pushDesc('hash_start',  $self->hash_start)  }
+  else                        { $self->_pushDesc('ref_start',   $self->ref_start)   }
 
   $self->_pushLevel($reftype);
   return
@@ -86,8 +122,8 @@ sub sclose {
   $self->_popLevel;
 
   my $reftype = reftype $item;
-  if    ($reftype eq 'ARRAY') { $self->_pushLine; $self->_pushDesc('ref_end', ']') }
-  elsif ($reftype eq 'HASH')  { $self->_pushLine; $self->_pushDesc('ref_end', '}') }
+  if    ($reftype eq 'ARRAY') { $self->_pushLine; $self->_pushDesc('array_end', $self->array_end) }
+  elsif ($reftype eq 'HASH')  { $self->_pushLine; $self->_pushDesc('hash_end', $self->hash_end)   }
 
   return
 }
@@ -96,60 +132,97 @@ sub sread {
   my ($self, $item) = @_;
 
   my $refaddr = refaddr($item);
-  my $blessed = blessed($item) // '';
+  my $blessed = Scalar::Util::blessed($item) // '';
   my $reftype = reftype($item) // '';
 
   #
-  # Push a newline and prefix with indice if in a fold
+  # Push a newline or a '=>' and prefix with indice if in a fold
   #
-  if ($self->_currentLevel) {
+  my $currentLevel = $self->_currentLevel;
+  if ($currentLevel) {
     my $currentReftypePerLevel = $self->_currentReftypePerLevel->[-1];
     my $currentIndicePerLevel = $self->_currentIndicePerLevel->[-1];
-    if ($currentReftypePerLevel eq 'ARRAY' || $currentReftypePerLevel eq 'HASH') {
-      $self->_pushLine;
-      $self->_pushDesc('indice', "[$currentIndicePerLevel] ");
+    if ($currentReftypePerLevel eq 'ARRAY' or $currentReftypePerLevel eq 'HASH') {
+      if ($currentReftypePerLevel eq 'ARRAY') {
+        $self->_pushLine;
+      } else {
+        if ($currentIndicePerLevel % 2) {
+          $self->_pushDesc('hash_separator', $self->hash_separator);
+        } else {
+          $self->_pushLine;
+        }
+      }
+      if ($self->show_indice) {
+        $self->_pushDesc('indice_start', $self->indice_start);
+        $self->_pushDesc('indice_value', $currentIndicePerLevel);
+        $self->_pushDesc('indice_end', $self->indice_end);
+      }
     }
     $self->_currentIndicePerLevel->[-1]++
   }
   #
   # See how this can be displayed
   #
-  if ($blessed) {
-    $self->_pushDesc('string', $blessed);
-  } elsif (! $reftype) {
-    if (defined($item)) {
-      my $string = eval { "$item" };
-      if (defined($string)) {
-        $self->_pushDesc('string', $string);
-      } else {
-        $self->_pushDesc('unknown', $self->unknown);
-      }
-    } else {
-      $self->_pushDesc('undef', $self->undef);
-    }
-  }
-  #
-  # Append adress to the name if already scanned
-  #
   my $alreadyScanned;
+  my $hex;
   if ($refaddr) {
-    my $hex = sprintf('0x%x', $refaddr);
+    $hex = sprintf('0x%x', $refaddr);
     my $seen = $self->_seen;
     if (exists $seen->{$hex}) {
-      $alreadyScanned = $hex;
+      $alreadyScanned = $seen->{$hex};
+      #
+      # Already scanned !
+      #
+      $self->_pushDesc('already_scanned', $alreadyScanned);
     } else {
-      $seen->{$hex} = 1
+      #
+      # Determine the "location" in terms of an hypothetical "@var" describing the tree
+      #
+      my @levels = ();
+      my $level = $currentLevel;
+      while ($level-- > 0) {
+        unshift(@levels, '[' . ($self->_currentIndicePerLevel->[$level] - 1) . ']');
+      }
+      $seen->{$hex} = 'var' . join('', @levels);
     }
-    $self->_pushDesc('adress', "($hex)")
+  }
+  if (! $alreadyScanned) {
+    if ($blessed) {
+      #
+      # Priority is given to blessed name
+      #
+      $self->_pushDesc('string', $blessed);
+    } elsif (! $reftype) {
+      #
+      # Otherwise stringify if possible
+      #
+      if (defined($item)) {
+        my $string = eval { "$item" };
+        if (defined($string)) {
+          $self->_pushDesc('string', $string);
+        } else {
+          $self->_pushDesc('unknown', $self->unknown);
+        }
+      } else {
+        $self->_pushDesc('undef', $self->undef);
+      }
+    }
+    #
+    # Show address ?
+    #
+    if ($refaddr && $self->show_address) {
+      $self->_pushDesc('address_start', $self->address_start);
+      $self->_pushDesc('address', $hex);
+      $self->_pushDesc('address_end', $self->address_end);
+    }
+    #
+    # Show blessed indication ?
+    #
+    $self->_pushDesc('blessed', $self->blessed) if $blessed;
   }
   #
-  # Blessed ?
+  # Eventually increase indice number
   #
-  $self->_pushDesc('blessed', '->') if $blessed;
-  #
-  # Already scanned ?
-  #
-  # $self->_pushDesc('adress', "*$alreadyScanned") if $alreadyScanned;
   #
   # Prepare return value
   #
@@ -196,10 +269,26 @@ sub _pushLine {
 
 sub _pushDesc {
   my ($self, $what, $desc) = @_;
-  if ($self->ansicolor) {
+
+  if ($what eq 'string') {
+    #
+    # Detect any non ANSI character and enclose within ""
+    #
+    $desc =~ s/$_NON_ASCII_PRINT_RE/sprintf('\\x{%x}', ord(${^MATCH}))/egp;
+    $desc = "\"$desc\"" unless looks_like_number($desc);
+  }
+
+  if ($_CAN_COLOR && $self->ansicolor) {
     my $color = $self->colors->{$what};
     if ($color) {
-      $self->_lines->[-1] .= colored($desc, $color);
+      my $refcolor = reftype($color);
+      if (! $refcolor) {
+        $self->_lines->[-1] .= colored($desc, $color);
+      } elsif ($refcolor eq 'ARRAY') {
+        $self->_lines->[-1] .= colored($color, $desc);
+      } else {
+        $self->_lines->[-1] .= $desc;
+      }
     } else {
       $self->_lines->[-1] .= $desc;
     }
