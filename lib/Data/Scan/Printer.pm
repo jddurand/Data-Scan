@@ -2,6 +2,13 @@ use strict;
 use warnings FATAL => 'all';
 
 package Data::Scan::Printer;
+
+# ABSTRACT: Data::Scan::Printer - Example of a printer consumer for Data::Scan
+
+# VERSION
+
+# AUTHORITY
+
 use Exporter qw/import/;
 use vars qw/@EXPORT/;
 use Data::Scan::Impl::Printer;

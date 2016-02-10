@@ -64,7 +64,7 @@ Indicates to the consumer that an unfold of $item is starting. Return value is i
 
 =item $consumer->sread($item)
 
-Indicates to the consumer that he should take over $item. If the consumer is deciding to unfold it (typically when this is an ARRAY or a HASH reference), it should return an array reference containing the unfolded content. Anything but an an array reference means it has not been unfolded at all (for example a SCALAR value).
+Indicates to the consumer that he should take over $item. If the consumer is deciding to unfold it (typically when this is an ARRAY or a HASH reference), it should return an array reference containing the unfolded content. Anything but an an array reference means it has not been unfolded.
 
 The consumer has full control on the workflow and can decide to unfold or not whatever is meaningful to him.
 
@@ -108,14 +108,13 @@ sub process {
       #
       # Consumer's sread() returns eventual inner content
       #
-      if (defined($inner = $consumer->sread($previous = shift)) # sread(item, undef)
-          &&
-          (reftype($inner) // '') eq 'ARRAY') {
+      if (defined($inner = $consumer->sread($previous = shift))) {
+        my $reftype = reftype($inner) // '';
         unshift(@_,
                 $openaddr, $previous,
                 @{$inner},
                 $closeaddr, $previous
-               )
+               ) if ($reftype eq 'ARRAY')
       }
     } else {
       last

@@ -12,7 +12,7 @@ package Data::Scan::Impl::Printer;
 use Data::Dumper;
 use Moo;
 use SUPER;
-use Scalar::Util 1.26 qw/reftype blessed/;
+use Scalar::Util 1.26 qw/reftype refaddr blessed/;
 use Types::Standard -all;
 use Types::Common::Numeric -all;
 
@@ -32,6 +32,7 @@ has _lines                  => (is => 'rw', isa => ArrayRef,                    
 has _currentLevel           => (is => 'rw', isa => PositiveOrZeroInt,           clearer => 1, lazy => 1, default => sub { 0 });
 has _currentIndicePerLevel  => (is => 'rw', isa => ArrayRef[PositiveOrZeroInt], clearer => 1, lazy => 1, default => sub { [] });
 has _currentReftypePerLevel => (is => 'rw', isa => ArrayRef[Str],               clearer => 1, lazy => 1, default => sub { [] });
+has _seen                   => (is => 'rw', isa => HashRef[PositiveOrZeroInt],  clearer => 1, lazy => 1, default => sub { {} });
 #
 # Required methods
 #
@@ -41,6 +42,7 @@ sub start  {
   $self->_clear_currentLevel;
   $self->_clear_currentIndicePerLevel;
   $self->_clear_currentReftypePerLevel;
+  $self->_clear_seen;
 }
 
 sub end { !!1 }
@@ -54,10 +56,26 @@ sub sopen {
   my ($self, $item) = @_;
 
   my $reftype = reftype $item;
+  my $blessed = blessed $item;
 
-  if    ($reftype eq 'ARRAY') { $self->_pushDesc('->['); $self->_pushLevel($reftype) }
-  elsif ($reftype eq 'HASH')  { $self->_pushDesc('->{'); $self->_pushLevel($reftype) }
+  if    ($blessed)            { $self->_pushDesc('->') }
+
+  if    ($reftype eq 'ARRAY') { $self->_pushDesc('['); $self->_pushLevel($reftype) }
+  elsif ($reftype eq 'HASH')  { $self->_pushDesc('{'); $self->_pushLevel($reftype) }
   else                        { $self->_pushDesc('\\');  $self->_pushLevel($reftype) }
+
+  return
+}
+
+sub sclose {
+  my ($self, $item) = @_;
+
+  $self->_popLevel;
+
+  my $reftype = reftype $item;
+  if    ($reftype eq 'ARRAY') { $self->_pushLine; $self->_pushDesc(']') }
+  elsif ($reftype eq 'HASH')  { $self->_pushLine; $self->_pushDesc('}') }
+  else                        {                                         }
 
   return
 }
@@ -65,6 +83,7 @@ sub sopen {
 sub sread {
   my ($self, $item) = @_;
 
+  my $refaddr = refaddr($item);
   my $blessed = blessed($item) // '';
   my $reftype = reftype($item) // '';
   my @desc = ();
@@ -79,6 +98,20 @@ sub sread {
     #
     $name = defined($item) ? do { eval { "$item" } // $self->unknown } : $self->undef
   }
+  #
+  # Already scanned ?
+  #
+  my $alreadyScanned;
+  if ($refaddr) {
+    my $hex = sprintf('0x%x', $refaddr);
+    my $seen = $self->_seen;
+    if (exists $seen->{$hex}) {
+      $alreadyScanned = $hex;
+    } else {
+      $seen->{$hex} = 1
+    }
+  }
+  $name .= "($alreadyScanned)" if $alreadyScanned;
 
   if ($self->_currentLevel) {
     my $currentReftypePerLevel = $self->_currentReftypePerLevel->[-1];
@@ -114,24 +147,17 @@ sub sread {
   # Unfold
   #
   my $rc;
-  if    ($reftype eq 'ARRAY') { $rc = $item }
-  elsif ($reftype eq 'HASH')  { $rc = [ map { $_ => $item->{$_} } sort { ($a // '') cmp ($b // '') } keys %{$item} ] }
-  elsif ($reftype)            { $rc = [ ${$item} ] }
+  if ($reftype && ! $alreadyScanned) {
+    if ($reftype eq 'ARRAY') {
+      $rc = $item
+    } elsif ($reftype eq 'HASH') {
+      $rc = [ map { $_ => $item->{$_} } sort { ($a // '') cmp ($b // '') } keys %{$item} ]
+    } else {
+      $rc = [ ${$item} ]
+    }
+  }
 
   $rc
-}
-
-sub sclose {
-  my ($self, $item) = @_;
-
-  $self->_popLevel;
-
-  my $reftype = reftype $item;
-  if    ($reftype eq 'ARRAY') { $self->_pushLine; $self->_pushDesc(']') }
-  elsif ($reftype eq 'HASH')  { $self->_pushLine; $self->_pushDesc('}') }
-  else                        {                                         }
-
-  return
 }
 
 #
