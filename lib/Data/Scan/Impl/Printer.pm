@@ -121,7 +121,7 @@ sub sread {
       if (defined($string)) {
         $self->_pushDesc('string', $string);
       } else {
-        $self->_pushDesc('string', $self->unknown);
+        $self->_pushDesc('unknown', $self->unknown);
       }
     } else {
       $self->_pushDesc('undef', $self->undef);
