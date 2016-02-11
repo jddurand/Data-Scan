@@ -103,6 +103,7 @@ sub process {
       if    ($openaddr  == refaddr $_[$[]) { $consumer->sopen ((splice @_, $[, 2)[-1]) } # sopen($item)
       elsif ($closeaddr == refaddr $_[$[]) { $consumer->sclose((splice @_, $[, 2)[-1]) } # sclose($item)
       else                                 { last }
+      last if ! @_
     }
     if (@_) {
       #
