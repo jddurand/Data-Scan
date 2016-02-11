@@ -47,6 +47,8 @@ Instantiate a new Data::Scan object. Takes as parameter a required consumer, tha
 
 my $_open;
 my $_close;
+my $openaddr = \$_open;
+my $closeaddr = \$_close;
 
 =head2 $self->process(Any @arguments)
 
@@ -84,17 +86,15 @@ sub process {
   my ($self) = shift;
 
   my $consumer = $self->consumer;
-  my $openaddr = \$_open;
-  my $closeaddr = \$_close;
-
   my $previous;
   my $inner;
-  my $reftype;
-
   #
   # Start
   #
   $consumer->start();                                                                    # start()
+  #
+  # Loop
+  #
   while (@_) {
     #
     # First our private thingies
@@ -108,7 +108,7 @@ sub process {
     #
     # Consumer's sread() returns eventual inner content
     #
-    if (defined($inner = $consumer->sread($previous = shift))) {                       # sread($item)
+    if (defined($inner = $consumer->sread($previous = shift))) {                         # sread($item)
       unshift(@_,
               $openaddr, $previous,
               @{$inner},
@@ -119,7 +119,7 @@ sub process {
   #
   # End - return value of consumer's end() is what we return
   #
-  return $consumer->end()                                                              # end()
+  return $consumer->end()                                                                # end()
 }
 
 1;
