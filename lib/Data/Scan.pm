@@ -104,20 +104,16 @@ sub process {
       elsif ($closeaddr == refaddr $_[$[]) { $consumer->sclose((splice @_, $[, 2)[-1]) } # sclose($item)
       else                                 { last }
     }
-    if (@_) {
-      #
-      # Consumer's sread() returns eventual inner content
-      #
-      if (defined($inner = $consumer->sread($previous = shift))) {                       # sread($item)
-        my $reftype = reftype($inner) // '';
-        unshift(@_,
-                $openaddr, $previous,
-                @{$inner},
-                $closeaddr, $previous
-               ) if ($reftype eq 'ARRAY')
-      }
-    } else {
-      last
+    last if ! @_;
+    #
+    # Consumer's sread() returns eventual inner content
+    #
+    if (defined($inner = $consumer->sread($previous = shift))) {                       # sread($item)
+      unshift(@_,
+              $openaddr, $previous,
+              @{$inner},
+              $closeaddr, $previous
+             ) if ((reftype($inner) // '') eq 'ARRAY')
     }
   }
   #
