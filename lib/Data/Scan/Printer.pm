@@ -23,6 +23,15 @@ extends 'Data::Scan';
 
 Data::Scan::Printer is polluting user's namespace with a dspp() method, showing our Data::Scan can be used to dump an arbitrary structure.
 
+=head1 SYNOPSIS
+
+    use strict;
+    use warnings FATAL => 'all';
+    use Data::Scan::Printer;
+
+    my $this = bless([ 'var1', 'var2', {'a' => 'b', 'c' => 'd'}, \undef, \\undef, [] ], 'TEST');
+    dspp($this);
+
 =head1 SUBROUTINES/METHODS
 
 =head2 dspp(@arguments)
@@ -36,5 +45,11 @@ sub dspp {
   __PACKAGE__->new(consumer => $consumer)->process(@_);
   print $consumer->output
 }
+
+=head1 SEE ALSO
+
+L<Data::Printer>
+
+=cut
 
 1;
