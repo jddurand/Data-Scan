@@ -50,31 +50,31 @@ my $_close;
 
 =head2 $self->process(@arguments)
 
-Scan over all items in @arguments and will call the consumer with these five methods:
+Scan over all items in @arguments and will call the consumer with these five methods/signatures:
 
 =over
 
-=item $consumer->start
+=item $consumer->start()
 
 Indicates to the consumer that scanning is starting. Return value is ignored.
 
-=item $consumer->sopen($item)
+=item $consumer->sopen(Any $item)
 
 Indicates to the consumer that an unfold of $item is starting. Return value is ignored.
 
-=item $consumer->sread($item)
+=item $consumer->sread(Any $item)
 
 Indicates to the consumer that he should take over $item. If the consumer is deciding to unfold it (typically when this is an ARRAY or a HASH reference), it should return an array reference containing the unfolded content. Anything but an an array reference means it has not been unfolded.
 
 The consumer has full control on the workflow and can decide to unfold or not whatever is meaningful to him.
 
-=item $consumer->sclose($item)
+=item $consumer->sclose(Any $item)
 
 Indicates to the consumer that an unfold of $item is ending. Return value is ignored.
 
-=item $consumer->end
+=item $consumer->end()
 
-Indicates to the consumer that scanning is ending.
+Indicates to the consumer that scanning is ending. Return value of consumer->end() will be the return value of $self->process(@arguments).
 
 =back
 
