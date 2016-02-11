@@ -1,6 +1,24 @@
 Changelog for Data-Scan
 
-0.001 2016-02-10T18:31:01
+0.002 2016-02-11T19:50:27
+ [Jean-Damien Durand <jeandamiendurand@free.fr>]
+ - Scan/Printer.pm: more POD
+ - Data/Scan.pm: again ops
+ - , for next element in array or hash
+ - Data/Scan.pm: Still less ops
+ - Data/Scan.pm: Again less ops
+ - Data/Scan.pm: One less op at the end
+ - Data/Scan.pm: POD explaining process() signature
+ - Data/Scan.pm: more POD explaining consumer signature calls
+ - Data/Scan.pm: less ops I believe
+ - Data/Scan.pm: move protection in the while() directly
+ - Data/Scan.pm: extra protection when eating internal tags
+ - Data/Scan.pm: removed unused $_read and added some comments
+
+ [Mohammad S Anwar <mohammad.anwar@yahoo.com>]
+ - - Fix typo in the pod document.
+
+0.001 2016-02-10T18:31:40Z
  [Jean-Damien Durand <jeandamiendurand@free.fr>]
  - Initial release
  - dzil xtest

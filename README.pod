@@ -4,11 +4,11 @@
 
 =head1 NAME
 
-Data::Scan - Data::Scan - Stackfree arbitrary data scanner
+Data::Scan - Stackfree arbitrary data scanner
 
 =head1 VERSION
 
-version 0.001
+version 0.002
 
 =head1 SYNOPSIS
 
@@ -32,33 +32,33 @@ Data::Scan is a stackfree scanner of arbitrary data. It has no other intelligenc
 
 Instantiate a new Data::Scan object. Takes as parameter a required consumer, that is consuming the Data::Scan::Role::Consumer role.
 
-=head2 $self->process(@arguments)
+=head2 $self->process(Any @arguments)
 
-Scan over all items in @arguments and will call the consumer with these five methods:
+Scan over all items in @arguments and will call the consumer with these five methods/signatures:
 
 =over
 
-=item $consumer->start
+=item $consumer->start()
 
 Indicates to the consumer that scanning is starting. Return value is ignored.
 
-=item $consumer->sopen($item)
+=item $consumer->sopen(Any $item)
 
 Indicates to the consumer that an unfold of $item is starting. Return value is ignored.
 
-=item $consumer->sread($item)
+=item $consumer->sread(Any $item)
 
 Indicates to the consumer that he should take over $item. If the consumer is deciding to unfold it (typically when this is an ARRAY or a HASH reference), it should return an array reference containing the unfolded content. Anything but an an array reference means it has not been unfolded.
 
 The consumer has full control on the workflow and can decide to unfold or not whatever is meaningful to him.
 
-=item $consumer->sclose($item)
+=item $consumer->sclose(Any $item)
 
 Indicates to the consumer that an unfold of $item is ending. Return value is ignored.
 
-=item $consumer->end
+=item $consumer->end()
 
-Indicates to the consumer that scanning is ending.
+Indicates to the consumer that scanning is ending. Return value of consumer->end() will be the return value of $self->process(@arguments).
 
 =back
 
@@ -84,6 +84,12 @@ L<https://github.com/jddurand/data-scan>
 =head1 AUTHOR
 
 Jean-Damien Durand <jeandamiendurand@free.fr>
+
+=head1 CONTRIBUTOR
+
+=for stopwords Mohammad S Anwar
+
+Mohammad S Anwar <mohammad.anwar@yahoo.com>
 
 =head1 COPYRIGHT AND LICENSE
 

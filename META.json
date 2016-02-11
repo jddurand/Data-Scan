@@ -1,5 +1,5 @@
 {
-   "abstract" : "Data::Scan - Stackfree arbitrary data scanner",
+   "abstract" : "Stackfree arbitrary data scanner",
    "author" : [
       "Jean-Damien Durand <jeandamiendurand@free.fr>"
    ],
@@ -86,19 +86,19 @@
    "provides" : {
       "Data::Scan" : {
          "file" : "lib/Data/Scan.pm",
-         "version" : "0.001"
+         "version" : "0.002"
       },
       "Data::Scan::Impl::Printer" : {
          "file" : "lib/Data/Scan/Impl/Printer.pm",
-         "version" : "0.001"
+         "version" : "0.002"
       },
       "Data::Scan::Printer" : {
          "file" : "lib/Data/Scan/Printer.pm",
-         "version" : "0.001"
+         "version" : "0.002"
       },
       "Data::Scan::Role::Consumer" : {
          "file" : "lib/Data/Scan/Role/Consumer.pm",
-         "version" : "0.001"
+         "version" : "0.002"
       }
    },
    "release_status" : "stable",
@@ -114,6 +114,9 @@
          "web" : "https://github.com/jddurand/data-scan"
       }
    },
-   "version" : "0.001"
+   "version" : "0.002",
+   "x_contributors" : [
+      "Mohammad S Anwar <mohammad.anwar@yahoo.com>"
+   ]
 }
 
