@@ -104,11 +104,10 @@ sub process {
       elsif ($closeaddr == refaddr $_[$[]) { $consumer->sclose((splice @_, $[, 2)[-1]) } # sclose($item)
       else                                 { last }
     }
-    last if ! @_;
     #
     # Consumer's sread() returns eventual inner content
     #
-    if (defined($inner = $consumer->sread($previous = shift))) {                         # sread($item)
+    if (@_ && defined($inner = $consumer->sread($previous = shift))) {                         # sread($item)
       unshift(@_,
               $openaddr, $previous,
               @{$inner},
