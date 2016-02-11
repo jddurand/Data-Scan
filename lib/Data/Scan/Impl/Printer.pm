@@ -43,9 +43,11 @@ has unknown           => (is => 'ro', isa => Str,              default => sub { 
 has newline           => (is => 'ro', isa => Str,              default => sub { return "\n"      });
 has ansicolor         => (is => 'ro', isa => Bool,             default => sub { return !!1       });
 has array_start       => (is => 'ro', isa => Str,              default => sub { return ' ['       });
+has array_next        => (is => 'ro', isa => Str,              default => sub { return ','       });
 has array_end         => (is => 'ro', isa => Str,              default => sub { return ']'       });
 has hash_start        => (is => 'ro', isa => Str,              default => sub { return ' {'       });
 has hash_end          => (is => 'ro', isa => Str,              default => sub { return '}'       });
+has hash_next         => (is => 'ro', isa => Str,              default => sub { return ','       });
 has hash_separator    => (is => 'ro', isa => Str,              default => sub { return ' => '    });
 has indice_start      => (is => 'ro', isa => Str,              default => sub { return '['       });
 has indice_end        => (is => 'ro', isa => Str,              default => sub { return '] '      });
@@ -60,12 +62,14 @@ has colors            => (is => 'ro', isa => HashRef,          default => sub { 
                                                                                         # string          => '',
                                                                                         # blessed         => 'magenta',
                                                                                         array_start     => 'bold yellow',
+                                                                                        array_next      => 'bold yellow',
                                                                                         array_end       => 'bold yellow',
 
                                                                                         hash_start      => 'bold yellow',
                                                                                         hash_key        => 'bold yellow',
                                                                                         hash_separator  => 'magenta',
                                                                                         hash_value      => 'bold yellow',
+                                                                                        hash_next       => 'bold yellow',
                                                                                         hash_end        => 'bold yellow',
 
                                                                                         ref_start       => 'bold yellow',
@@ -151,12 +155,14 @@ sub sread {
     if ($currentReftypePerLevel eq 'ARRAY' or $currentReftypePerLevel eq 'HASH') {
       my $show_indice;
       if ($currentReftypePerLevel eq 'ARRAY') {
+        $self->_pushDesc('array_next', $self->array_next) if ($currentIndicePerLevel > $[);
         $self->_pushLine;
         $show_indice = $self->show_array_indice;
       } else {
         if ($currentIndicePerLevel % 2) {
           $self->_pushDesc('hash_separator', $self->hash_separator);
         } else {
+          $self->_pushDesc('hash_next', $self->hash_next) if ($currentIndicePerLevel > 2);
           $self->_pushLine;
         }
         $show_indice = $self->show_hash_indice;
