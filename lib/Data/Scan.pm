@@ -48,7 +48,7 @@ Instantiate a new Data::Scan object. Takes as parameter a required consumer, tha
 my $_open;
 my $_close;
 
-=head2 $self->process(@arguments)
+=head2 $self->process(Any @arguments)
 
 Scan over all items in @arguments and will call the consumer with these five methods/signatures:
 
