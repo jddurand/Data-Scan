@@ -85,9 +85,7 @@ Indicates to the consumer that scanning is ending. Return value of consumer->end
 sub process {
   my ($self) = shift;
 
-  my $consumer = $self->consumer;
-  my $previous;
-  my $inner;
+  my ($consumer, $previous, $inner) = $self->consumer;
   #
   # Start
   #
@@ -107,13 +105,11 @@ sub process {
     #
     # Consumer's sread() returns eventual inner content
     #
-    if (@_ && defined($inner = $consumer->sread($previous = shift))) {                         # sread($item)
-      unshift(@_,
-              $openaddr, $previous,
-              @{$inner},
-              $closeaddr, $previous
-             ) if ((reftype($inner) // '') eq 'ARRAY')
-    }
+    unshift(@_,
+            $openaddr, $previous,
+            @{$inner},
+            $closeaddr, $previous
+           ) if (@_ && defined($inner = $consumer->sread($previous = shift)) && (reftype($inner) // '') eq 'ARRAY')
   }
   #
   # End - return value of consumer's end() is what we return
