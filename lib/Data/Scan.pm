@@ -94,7 +94,7 @@ sub process {
   #
   # Start
   #
-  $consumer->start;                                                                      # start()
+  $consumer->start();                                                                    # start()
   while (@_) {
     #
     # First our private thingies
@@ -119,7 +119,7 @@ sub process {
   #
   # End - return value of consumer's end() is what we return
   #
-  $consumer->end;                                                                        # end()
+  return $consumer->end()                                                              # end()
 }
 
 1;
