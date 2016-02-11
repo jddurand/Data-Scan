@@ -3,7 +3,7 @@ use warnings FATAL => 'all';
 
 package Data::Scan;
 
-# ABSTRACT: Data::Scan - Stackfree arbitrary data scanner
+# ABSTRACT: Stackfree arbitrary data scanner
 
 # VERSION
 
