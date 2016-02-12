@@ -53,7 +53,8 @@ has blessed           => (is => 'ro', isa => Str,              default => sub { 
 has ref_start         => (is => 'ro', isa => Str,              default => sub { return '\\'      });
 has show_address      => (is => 'ro', isa => Bool,             default => sub { return !!0       });
 has show_array_indice => (is => 'ro', isa => Bool,             default => sub { return !!1       });
-has show_hash_indice  => (is => 'ro', isa => Bool,             default => sub { return !!0       });
+has show_hash_indice  => (is => 'ro', isa => Bool,             default => sub { return !!1       });
+has indices_full      => (is => 'ro', isa => Bool,             default => sub { return !!1       });
 has deparse           => (is => 'ro', isa => Bool,             default => sub { return !!0       });
 has methods           => (is => 'ro', isa => Bool,             default => sub { return !!1       });
 has colors            => (is => 'ro', isa => HashRef,          default => sub { return {
@@ -70,6 +71,7 @@ has colors            => (is => 'ro', isa => HashRef,          default => sub { 
 
                                                                                         # ref_start       => 'bold yellow',
 
+                                                                                        indice_full     => 'magenta',
                                                                                         indice_start    => 'magenta',
                                                                                         indice_value    => 'magenta',
                                                                                         indice_end      => 'magenta',
@@ -163,7 +165,7 @@ sub dsread {
       if ($currentReftypePerLevel eq 'ARRAY') {
         $self->_pushDesc('array_next', $self->array_next) if ($currentIndicePerLevel > $[);
         $self->_pushLine;
-        $show_indice = $self->show_array_indice;
+        $show_indice = $self->show_array_indice
       } else {
         if ($currentIndicePerLevel % 2) {
           $self->_pushDesc('hash_separator', $self->hash_separator);
@@ -171,12 +173,25 @@ sub dsread {
           $self->_pushDesc('hash_next', $self->hash_next) if ($currentIndicePerLevel > 0);
           $self->_pushLine;
         }
-        $show_indice = $self->show_hash_indice;
+        $show_indice = $self->show_hash_indice
       }
       if ($show_indice) {
-        $self->_pushDesc('indice_start', $self->indice_start);
-        $self->_pushDesc('indice_value', $currentIndicePerLevel);
-        $self->_pushDesc('indice_end', $self->indice_end);
+        if ($self->indices_full) {
+          my @levels = (
+                        $self->_concatenateLevels($currentLevel - 1),
+                        $self->indice_start . $currentIndicePerLevel . $self->indice_end
+                       );
+          #
+          # As in a \var reference (see below), we want the levels to not have eventual space
+          #
+          my $levels = join('', @levels);
+          $levels =~ s/\s//g;
+          $self->_pushDesc('indice_full', $levels)
+        } else {
+          $self->_pushDesc('indice_start', $self->indice_start);
+          $self->_pushDesc('indice_value', $currentIndicePerLevel);
+          $self->_pushDesc('indice_end', $self->indice_end)
+        }
       }
     }
     $self->_currentIndicePerLevel->[-1]++
@@ -194,28 +209,30 @@ sub dsread {
       #
       # Already scanned !
       #
-      $self->_pushDesc('already_scanned', $alreadyScanned);
+      $self->_pushDesc('already_scanned', $alreadyScanned)
     } else {
       #
       # Determine the "location" in terms of an hypothetical "@var" describing the tree
+      # Note that we already increased $currentLevel
+      my @levels = $self->_concatenateLevels($currentLevel);
       #
-      my @levels = ();
-      my $level = $currentLevel;
-      while ($level-- > 0) {
-        unshift(@levels, '[' . ($self->_currentIndicePerLevel->[$level] - 1) . ']');
-      }
-      $seen->{$hex} = 'var' . join('', @levels);
+      # We want the levels to not have eventual space
+      #
+      my $levels = join('', @levels);
+      $levels =~ s/\s//g;
+      $seen->{$hex} = "var$levels"
     }
   }
   if (! $alreadyScanned) {
     if ($blessed && $reftype ne 'REGEXP') {
+      #
       # A regexp appears as being blessed in perl.
       # Priority is given to blessed name except if it is a regexp.
       #
-      $self->_pushDesc('string', $blessed);
+      $self->_pushDesc('string', $blessed)
     } elsif ($reftype eq 'CODE' && $self->deparse) {
       #
-      # Copied from Data::Printer
+      # Code deparse with B::Deparse
       #
       my $i = length($self->indent) x ($self->_currentLevel + 2);
       my $deparseopts = ["-sCv'Useless const omitted'"];
@@ -231,7 +248,7 @@ sub dsread {
       if (@code) {
         $self->_pushLevel($reftype);
         map { $self->_pushLine; $self->_pushDesc('code', $_) } @code;
-        $self->_popLevel($reftype);
+        $self->_popLevel($reftype)
       }
     } elsif ((! $reftype)
                ||
@@ -250,12 +267,12 @@ sub dsread {
         if (defined($string)) {
           $self->_pushDesc($reftype eq 'REGEXP' ? 'regexp' :
                            $reftype eq 'CODE' ? 'code' :
-                           'string', $string);
+                           'string', $string)
         } else {
-          $self->_pushDesc('unknown', $self->unknown);
+          $self->_pushDesc('unknown', $self->unknown)
         }
       } else {
-        $self->_pushDesc('undef', $self->undef);
+        $self->_pushDesc('undef', $self->undef)
       }
     }
     #
@@ -264,12 +281,12 @@ sub dsread {
     if ($refaddr && $self->show_address) {
       $self->_pushDesc('address_start', $self->address_start);
       $self->_pushDesc('address', $hex);
-      $self->_pushDesc('address_end', $self->address_end);
+      $self->_pushDesc('address_end', $self->address_end)
     }
     #
     # Show blessed indication ?
     #
-    $self->_pushDesc('blessed', $self->blessed) if $blessed;
+    $self->_pushDesc('blessed', $self->blessed) if $blessed
   }
   #
   # Eventually increase indice number
@@ -306,22 +323,30 @@ sub dsread {
                       private_methods    => \%private_methods,
                       inherited_methods  => \%inherited_methods
                      }
-            );
+            )
       }
       if (Class::Inspector->loaded($blessed)) {
-        push(@{$rc}, { loaded_filename => Class::Inspector->loaded_filename($blessed) });
+        push(@{$rc}, { loaded_filename => Class::Inspector->loaded_filename($blessed) })
       } else {
-        push(@{$rc}, { resolved_filename => Class::Inspector->resolved_filename($blessed) });
+        push(@{$rc}, { resolved_filename => Class::Inspector->resolved_filename($blessed) })
       }
     }
   }
 
   $rc
 }
-
 #
 # Internal methods
 #
+sub _concatenateLevels {
+  my ($self, $level) = @_;
+  my @levels = ();
+  while ($level-- > 0) {
+    unshift(@levels, $self->indice_start . ($self->_currentIndicePerLevel->[$level] - 1) . $self->indice_end)
+  }
+  return @levels
+}
+
 sub _pushLevel {
   my ($self, $reftype) = @_;
 
