@@ -55,25 +55,25 @@ Scan over all items in @arguments and will call the consumer with these five met
 
 =over
 
-=item $consumer->start()
+=item $consumer->dsstart()
 
 Indicates to the consumer that scanning is starting. Return value is ignored.
 
-=item $consumer->sopen(Any $item)
+=item $consumer->dsopen(Any $item)
 
 Indicates to the consumer that an unfold of $item is starting. Return value is ignored.
 
-=item $consumer->sread(Any $item)
+=item $consumer->dsread(Any $item)
 
 Indicates to the consumer that he should take over $item. If the consumer is deciding to unfold it (typically when this is an ARRAY or a HASH reference), it should return an array reference containing the unfolded content. Anything but an an array reference means it has not been unfolded.
 
 The consumer has full control on the workflow and can decide to unfold or not whatever is meaningful to him.
 
-=item $consumer->sclose(Any $item)
+=item $consumer->dsclose(Any $item)
 
 Indicates to the consumer that an unfold of $item is ending. Return value is ignored.
 
-=item $consumer->end()
+=item $consumer->dsend()
 
 Indicates to the consumer that scanning is ending. Return value of consumer->end() will be the return value of $self->process(@arguments).
 
@@ -88,7 +88,7 @@ sub process {
   #
   # Start
   #
-  $consumer->start();                                                                    # start()
+  $consumer->dsstart();
   #
   # Loop
   #
@@ -97,23 +97,23 @@ sub process {
     # First our private thingies
     #
     while (@_ && ref $_[$[]) {
-      if    ($openaddr  == refaddr $_[$[]) { $consumer->sopen ((splice @_, $[, 2)[-1]) } # sopen($item)
-      elsif ($closeaddr == refaddr $_[$[]) { $consumer->sclose((splice @_, $[, 2)[-1]) } # sclose($item)
+      if    ($openaddr  == refaddr $_[$[]) { $consumer->dsopen ((splice @_, $[, 2)[-1]) }
+      elsif ($closeaddr == refaddr $_[$[]) { $consumer->dsclose((splice @_, $[, 2)[-1]) }
       else                                 { last }
     }
     #
-    # Consumer's sread() returns eventual inner content
+    # Consumer's dsread() returns eventual inner content
     #
     unshift(@_,
             $openaddr, $previous,
             @{$inner},
             $closeaddr, $previous
-           ) if (@_ && defined($inner = $consumer->sread($previous = shift)) && (reftype($inner) // '') eq 'ARRAY')
+           ) if (@_ && defined($inner = $consumer->dsread($previous = shift)) && (reftype($inner) // '') eq 'ARRAY')
   }
   #
-  # End - return value of consumer's end() is what we return
+  # End - return value of consumer's dsend() is what we return
   #
-  return $consumer->end()                                                                # end()
+  return $consumer->dsend()
 }
 
 1;

@@ -10,10 +10,10 @@ use Moo::Role;
 
 # AUTHORITY
 
-requires 'start';
-requires 'sopen';
-requires 'sread';
-requires 'sclose';
-requires 'end';
+requires 'dsstart';
+requires 'dsopen';
+requires 'dsread';
+requires 'dsclose';
+requires 'dsend';
 
 1;

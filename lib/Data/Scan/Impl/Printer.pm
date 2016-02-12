@@ -95,7 +95,7 @@ has _seen                   => (is => 'rw', isa => HashRef[PositiveOrZeroInt],  
 #
 # Required methods
 #
-sub start  {
+sub dsstart  {
   my ($self) = @_;
   $self->_clear_lines;
   $self->_clear_currentLevel;
@@ -104,14 +104,14 @@ sub start  {
   $self->_clear_seen;
 }
 
-sub end { !!1 }
+sub dsend { !!1 }
 
-sub output {
+sub dsoutput {
   my ($self) = @_;
   return join($self->newline, @{$self->_lines})
 }
 
-sub sopen {
+sub dsopen {
   my ($self, $item) = @_;
 
   my $reftype = reftype $item;
@@ -125,7 +125,7 @@ sub sopen {
   return
 }
 
-sub sclose {
+sub dsclose {
   my ($self, $item) = @_;
 
   $self->_popLevel;
@@ -137,7 +137,7 @@ sub sclose {
   return
 }
 
-sub sread {
+sub dsread {
   my ($self, $item) = @_;
 
   my $refaddr = refaddr($item);
