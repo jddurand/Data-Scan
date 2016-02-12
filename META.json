@@ -51,7 +51,6 @@
       "runtime" : {
          "requires" : {
             "Carp" : "0",
-            "Data::Dumper" : "0",
             "Exporter" : "0",
             "IO::Interactive::Tiny" : "0",
             "Moo" : "0",
@@ -86,19 +85,19 @@
    "provides" : {
       "Data::Scan" : {
          "file" : "lib/Data/Scan.pm",
-         "version" : "0.002"
+         "version" : "0.003"
       },
       "Data::Scan::Impl::Printer" : {
          "file" : "lib/Data/Scan/Impl/Printer.pm",
-         "version" : "0.002"
+         "version" : "0.003"
       },
       "Data::Scan::Printer" : {
          "file" : "lib/Data/Scan/Printer.pm",
-         "version" : "0.002"
+         "version" : "0.003"
       },
       "Data::Scan::Role::Consumer" : {
          "file" : "lib/Data/Scan/Role/Consumer.pm",
-         "version" : "0.002"
+         "version" : "0.003"
       }
    },
    "release_status" : "stable",
@@ -114,7 +113,7 @@
          "web" : "https://github.com/jddurand/data-scan"
       }
    },
-   "version" : "0.002",
+   "version" : "0.003",
    "x_contributors" : [
       "Mohammad S Anwar <mohammad.anwar@yahoo.com>"
    ]

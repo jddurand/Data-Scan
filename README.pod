@@ -8,7 +8,7 @@ Data::Scan - Stackfree arbitrary data scanner
 
 =head1 VERSION
 
-version 0.002
+version 0.003
 
 =head1 SYNOPSIS
 
@@ -20,7 +20,6 @@ version 0.002
     my $this = bless([ 'var1', 'var2', {'a' => 'b', 'c' => 'd'}, \undef, \\undef, [] ], 'TEST');
     my $consumer = Data::Scan::Impl::Printer->new;
     Data::Scan->new(consumer => $consumer)->process($this);
-    print $consumer->output;
 
 =head1 DESCRIPTION
 
@@ -38,25 +37,25 @@ Scan over all items in @arguments and will call the consumer with these five met
 
 =over
 
-=item $consumer->start()
+=item $consumer->dsstart()
 
 Indicates to the consumer that scanning is starting. Return value is ignored.
 
-=item $consumer->sopen(Any $item)
+=item $consumer->dsopen(Any $item)
 
 Indicates to the consumer that an unfold of $item is starting. Return value is ignored.
 
-=item $consumer->sread(Any $item)
+=item $consumer->dsread(Any $item)
 
 Indicates to the consumer that he should take over $item. If the consumer is deciding to unfold it (typically when this is an ARRAY or a HASH reference), it should return an array reference containing the unfolded content. Anything but an an array reference means it has not been unfolded.
 
 The consumer has full control on the workflow and can decide to unfold or not whatever is meaningful to him.
 
-=item $consumer->sclose(Any $item)
+=item $consumer->dsclose(Any $item)
 
 Indicates to the consumer that an unfold of $item is ending. Return value is ignored.
 
-=item $consumer->end()
+=item $consumer->dsend()
 
 Indicates to the consumer that scanning is ending. Return value of consumer->end() will be the return value of $self->process(@arguments).
 

@@ -1,10 +1,16 @@
 Changelog for Data-Scan
 
-0.002 2016-02-11T19:50:27
+0.003 2016-02-12T05:39:54
+ [Jean-Damien Durand <jeandamiendurand@free.fr>]
+ - Uniformization of required API: everything is prefixed with ds
+ - Removed output from role requirements
+ - Impl/Printer.pm: Removed non neede Data::Dumper dependency
+
+0.002 2016-02-11T19:50:27Z
  [Jean-Damien Durand <jeandamiendurand@free.fr>]
  - Scan/Printer.pm: more POD
  - Data/Scan.pm: again ops
- - , for next element in array or hash
+ - for next element in array or hash
  - Data/Scan.pm: Still less ops
  - Data/Scan.pm: Again less ops
  - Data/Scan.pm: One less op at the end
@@ -16,7 +22,7 @@ Changelog for Data-Scan
  - Data/Scan.pm: removed unused $_read and added some comments
 
  [Mohammad S Anwar <mohammad.anwar@yahoo.com>]
- - - Fix typo in the pod document.
+ - Fix typo in the pod document.
 
 0.001 2016-02-10T18:31:40Z
  [Jean-Damien Durand <jeandamiendurand@free.fr>]
