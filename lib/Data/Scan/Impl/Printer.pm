@@ -55,6 +55,7 @@ has show_address      => (is => 'ro', isa => Bool,             default => sub { 
 has show_array_indice => (is => 'ro', isa => Bool,             default => sub { return !!1       });
 has show_hash_indice  => (is => 'ro', isa => Bool,             default => sub { return !!0       });
 has deparse           => (is => 'ro', isa => Bool,             default => sub { return !!0       });
+has methods           => (is => 'ro', isa => Bool,             default => sub { return !!1       });
 has colors            => (is => 'ro', isa => HashRef,          default => sub { return {
                                                                                         # string          => 'green',
                                                                                         # blessed         => 'magenta',
@@ -289,7 +290,7 @@ sub dsread {
         $rc = [ ${$item} ]
       }
     }
-    if ($blessed) {
+    if ($blessed && $self->methods) {
       $rc //= [];
       my $expanded = Class::Inspector->methods($blessed, 'expanded');
       if (defined($expanded) && reftype($expanded) eq 'ARRAY') {

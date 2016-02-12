@@ -49,9 +49,13 @@ sub dspp {
   $consumer->dsprint
 }
 
+=head1 NOTES
+
+If methods option is on, L<Class::Inspector> (and not L<Package::Stash> like what does L<Data::Printer>) is used to get public, private and other (labelled inherited, then) methods. Thus, notion of methods, usage of @ISA etc, could look different to what L<Data::Printer> say.
+
 =head1 SEE ALSO
 
-L<Data::Printer>
+L<Data::Printer>, L<Class::Inspector>
 
 =cut
 
