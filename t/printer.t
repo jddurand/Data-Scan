@@ -5,7 +5,6 @@ use Test::More tests => 1;
 BEGIN {
     use_ok('Data::Scan::Printer') || print "Bail out!\n";
 }
-
 my $this = bless([ 'var1',
                    '2',
                    {'a' => 'b',
@@ -17,10 +16,10 @@ my $this = bless([ 'var1',
                     'm' => \\undef,
                     'non-\x{e4}scii' => 'ch\x{e0}racter',
                     'o' => sub { my $code = 'something' },
-                    'p' => qr/re"gexp/,
+                    'p' => qr/re"gexp/
                    }
                  ], 'Test');
-push(@{$this}, { self => $this });
+push(@{$this}, { self => $this, dspp => Data::Scan::Printer->new });
 dspp($this);
 done_testing();
 
