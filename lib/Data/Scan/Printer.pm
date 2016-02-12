@@ -29,14 +29,17 @@ Data::Scan::Printer is polluting user's namespace with a dspp() method, showing 
     use warnings FATAL => 'all';
     use Data::Scan::Printer;
 
-    my $this = bless([ 'var1', 'var2', {'a' => 'b', 'c' => 'd'}, \undef, \\undef, [] ], 'TEST');
+    my $this = bless([ 'var1', 'var2', {'a' => 'b', 'c' => 'd'}, \undef, \\undef, [], sub { return 'something' } ], 'TEST');
+    local %Data::Scan::Printer::Option = (
+      deparse => 1
+    );
     dspp($this);
 
 =head1 SUBROUTINES/METHODS
 
 =head2 dspp(@arguments)
 
-Print to STDOUT a dumped vision of the arguments.
+Print to Data::Scan::Impl::Printer's handle a dumped vision of @arguments. An instance of Data::Scan::Impl::Printer is created automatically, using parameters that have to be available in %Data::Scan::Printer::Option. Please refer to L<Data::Scan::Impl::Printer> documentation for the available options.
 
 =cut
 
@@ -55,7 +58,7 @@ If methods option is on, L<Class::Inspector> (and not L<Package::Stash> like wha
 
 =head1 SEE ALSO
 
-L<Data::Printer>, L<Class::Inspector>
+L<Data::Scan::Impl::Printer>, L<Data::Printer>, L<Class::Inspector>
 
 =cut
 
