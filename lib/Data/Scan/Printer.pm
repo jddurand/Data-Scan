@@ -44,9 +44,9 @@ sub dspp {
   my $consumer = Data::Scan::Impl::Printer->new(%Data::Scan::Printer::Option);
   __PACKAGE__->new(consumer => $consumer)->process(@_);
   #
-  # We know this consumer has a dsoutput method
+  # We know this consumer has a dsprint method
   #
-  print $consumer->dsoutput
+  $consumer->dsprint
 }
 
 =head1 SEE ALSO

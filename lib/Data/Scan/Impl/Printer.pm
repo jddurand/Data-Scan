@@ -9,7 +9,7 @@ package Data::Scan::Impl::Printer;
 
 # AUTHORITY
 
-use IO::Interactive::Tiny;
+use B::Deparse;
 use Moo;
 use Perl::OSType qw/is_os_type/;
 my $_HAVE_Win32__Console__ANSI;
@@ -24,10 +24,6 @@ use Term::ANSIColor;
 use Types::Standard -all;
 use Types::Common::Numeric -all;
 #
-# Can ansi colors be used ?
-#
-my $_CAN_COLOR = IO::Interactive::Tiny::is_interactive() ? (is_os_type('Windows') ? $_HAVE_Win32__Console__ANSI : 1) : 0;
-#
 # My way of matching only printable ASCII characters
 #
 my $_ASCII_PRINT = quotemeta(join('', map { chr } 33..126));
@@ -41,10 +37,10 @@ has undef             => (is => 'ro', isa => Str,              default => sub { 
 has unknown           => (is => 'ro', isa => Str,              default => sub { return '???'     });
 has newline           => (is => 'ro', isa => Str,              default => sub { return "\n"      });
 has ansicolor         => (is => 'ro', isa => Bool,             default => sub { return !!1       });
-has array_start       => (is => 'ro', isa => Str,              default => sub { return ' ['       });
+has array_start       => (is => 'ro', isa => Str,              default => sub { return ' ['      });
 has array_next        => (is => 'ro', isa => Str,              default => sub { return ','       });
 has array_end         => (is => 'ro', isa => Str,              default => sub { return ']'       });
-has hash_start        => (is => 'ro', isa => Str,              default => sub { return ' {'       });
+has hash_start        => (is => 'ro', isa => Str,              default => sub { return ' {'      });
 has hash_end          => (is => 'ro', isa => Str,              default => sub { return '}'       });
 has hash_next         => (is => 'ro', isa => Str,              default => sub { return ','       });
 has hash_separator    => (is => 'ro', isa => Str,              default => sub { return ' => '    });
@@ -57,31 +53,33 @@ has ref_start         => (is => 'ro', isa => Str,              default => sub { 
 has show_address      => (is => 'ro', isa => Bool,             default => sub { return !!0       });
 has show_array_indice => (is => 'ro', isa => Bool,             default => sub { return !!1       });
 has show_hash_indice  => (is => 'ro', isa => Bool,             default => sub { return !!0       });
+has deparse           => (is => 'ro', isa => Bool,             default => sub { return !!1       });
 has colors            => (is => 'ro', isa => HashRef,          default => sub { return {
-                                                                                        # string          => '',
+                                                                                        # string          => 'green',
                                                                                         # blessed         => 'magenta',
-                                                                                        array_start     => 'bold yellow',
-                                                                                        array_next      => 'bold yellow',
-                                                                                        array_end       => 'bold yellow',
+                                                                                        array_start     => 'magenta',
+                                                                                        array_next      => 'magenta',
+                                                                                        array_end       => 'magenta',
 
-                                                                                        hash_start      => 'bold yellow',
-                                                                                        hash_key        => 'bold yellow',
+                                                                                        hash_start      => 'magenta',
                                                                                         hash_separator  => 'magenta',
-                                                                                        hash_value      => 'bold yellow',
-                                                                                        hash_next       => 'bold yellow',
-                                                                                        hash_end        => 'bold yellow',
+                                                                                        hash_next       => 'magenta',
+                                                                                        hash_end        => 'magenta',
 
-                                                                                        ref_start       => 'bold yellow',
+                                                                                        # ref_start       => 'bold yellow',
 
                                                                                         indice_start    => 'magenta',
                                                                                         indice_value    => 'magenta',
                                                                                         indice_end      => 'magenta',
 
-                                                                                        undef           => 'bold red',
+                                                                                        undef           => 'red',
                                                                                         unknown         => 'bold red',
-                                                                                        address         => ['magenta on_black'],
-                                                                                        code            => 'green',
+                                                                                        address_start   => 'magenta',
+                                                                                        address         => 'magenta',
+                                                                                        address_end     => 'magenta',
+                                                                                        code            => 'yellow',
                                                                                         already_scanned => 'blink green',
+                                                                                        deparse         => 'green',
                                                                                        }
                                                                               });
 #
@@ -106,9 +104,16 @@ sub dsstart  {
 
 sub dsend { !!1 }
 
-sub dsoutput {
+sub dsprint {
   my ($self) = @_;
-  return join($self->newline, @{$self->_lines})
+
+  my $handle = $self->handle;
+  my $string = join($self->newline, @{$self->_lines});
+  if (Scalar::Util::blessed($handle) && $handle->can('print')) {
+    return $handle->print($string)
+  } else {
+    return print $handle $string
+  }
 }
 
 sub dsopen {
@@ -201,19 +206,47 @@ sub dsread {
     }
   }
   if (! $alreadyScanned) {
-    if ($blessed) {
-      #
-      # Priority is given to blessed name
+    if ($blessed && $reftype ne 'REGEXP') {
+      # A regexp appears as being blessed in perl.
+      # Priority is given to blessed name except if it is a regexp.
       #
       $self->_pushDesc('string', $blessed);
-    } elsif (! $reftype) {
+    } elsif ($reftype eq 'CODE' && $self->deparse) {
       #
-      # Otherwise stringify if possible
+      # Copied from Data::Printer
+      #
+      my $i = length($self->indent) x ($self->_currentLevel + 2);
+      my $deparseopts = ["-sCv'Useless const omitted'"];
+      my $code = 'sub ' . B::Deparse->new($deparseopts)->coderef2text($item);
+      my @code = map { s/^\s*//; s/\s*$//; $_ } grep { defined } split(/\R/, $code);
+      #
+      # First item is no aligned
+      #
+      $self->_pushDesc('code', shift(@code));
+      #
+      # The first is aligned
+      #
+      if (@code) {
+        $self->_pushLevel($reftype);
+        map { $self->_pushLine; $self->_pushDesc('code', $_) } @code;
+        $self->_popLevel($reftype);
+      }
+    } elsif ((! $reftype)
+               ||
+               (
+                $reftype ne 'ARRAY'  &&
+                $reftype ne 'HASH'   &&
+                $reftype ne 'SCALAR' &&
+                $reftype ne 'REF'
+               )
+              ) {
+      #
+      # Stringify if possible everything that we do not unfold
       #
       if (defined($item)) {
         my $string = eval { "$item" }; ## no critic qw/BuiltinFunctions::ProhibitStringyEval/
         if (defined($string)) {
-          $self->_pushDesc('string', $string);
+          $self->_pushDesc($reftype eq 'REGEXP' ? 'regexp' : 'string', $string);
         } else {
           $self->_pushDesc('unknown', $self->unknown);
         }
@@ -246,7 +279,9 @@ sub dsread {
       $rc = $item
     } elsif ($reftype eq 'HASH') {
       $rc = [ map { $_ => $item->{$_} } sort { ($a // '') cmp ($b // '') } keys %{$item} ]
-    } else {
+    } elsif ($reftype eq 'SCALAR') {
+      $rc = [ ${$item} ]
+    } elsif ($reftype eq 'REF') {
       $rc = [ ${$item} ]
     }
   }
@@ -292,7 +327,7 @@ sub _pushDesc {
     $desc = "\"$desc\"" unless looks_like_number($desc);
   }
 
-  if ($_CAN_COLOR && $self->ansicolor) {
+  if ($self->_canColor && $self->ansicolor) {
     my $color = $self->colors->{$what};
     if ($color) {
       my $refcolor = reftype($color);
@@ -315,6 +350,23 @@ sub _pushDesc {
 sub _currentDesc {
   my ($self) = @_;
   return $self->_lines->[-1]
+}
+
+sub _canColor {
+  my ($self) = @_;
+  #
+  # Mimic Data::Printer use of $ENV{ANSI_COLORS_DISABLED}
+  #
+  return 0 if exists($ENV{ANSI_COLORS_DISABLED});
+  #
+  # Add the support of ANSI_COLORS_ENABLED
+  #
+  return 1 if exists($ENV{ANSI_COLORS_ENABLED});
+  #
+  # that has precedence on the Windows check, returning 0 if we did not load Win32::Console::ANSI
+  #
+  return 0 if (is_os_type('Windows') && ! $_HAVE_Win32__Console__ANSI);
+  return 1
 }
 
 with 'Data::Scan::Role::Consumer';

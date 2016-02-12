@@ -15,7 +15,9 @@ my $this = bless([ 'var1',
                     'k' => [],
                     'l' => \undef,
                     'm' => \\undef,
-                    'Non-\x{e4}scii' => 'ch\x{e0}racter'
+                    'non-\x{e4}scii' => 'ch\x{e0}racter',
+                    'o' => sub { my $code = 'something' },
+                    'p' => qr/re"gexp/,
                    }
                  ], 'Test');
 push(@{$this}, { self => $this });
