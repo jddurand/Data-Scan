@@ -15,6 +15,5 @@ requires 'sopen';
 requires 'sread';
 requires 'sclose';
 requires 'end';
-requires 'output';
 
 1;

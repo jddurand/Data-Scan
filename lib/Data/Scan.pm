@@ -28,7 +28,6 @@ Data::Scan is a stackfree scanner of arbitrary data. It has no other intelligenc
     my $this = bless([ 'var1', 'var2', {'a' => 'b', 'c' => 'd'}, \undef, \\undef, [] ], 'TEST');
     my $consumer = Data::Scan::Impl::Printer->new;
     Data::Scan->new(consumer => $consumer)->process($this);
-    print $consumer->output;
 
 =cut
 

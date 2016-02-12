@@ -43,6 +43,9 @@ Print to STDOUT a dumped vision of the arguments.
 sub dspp {
   my $consumer = Data::Scan::Impl::Printer->new(%Data::Scan::Printer::Option);
   __PACKAGE__->new(consumer => $consumer)->process(@_);
+  #
+  # We know this consumer has an output method
+  #
   print $consumer->output
 }
 
