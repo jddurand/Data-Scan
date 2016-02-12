@@ -9,7 +9,6 @@ package Data::Scan::Impl::Printer;
 
 # AUTHORITY
 
-use Data::Dumper;
 use IO::Interactive::Tiny;
 use Moo;
 use Perl::OSType qw/is_os_type/;
