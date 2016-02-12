@@ -10,6 +10,7 @@ package Data::Scan::Impl::Printer;
 # AUTHORITY
 
 use B::Deparse;
+use Class::Inspector;
 use Moo;
 use Perl::OSType qw/is_os_type/;
 my $_HAVE_Win32__Console__ANSI;
@@ -53,7 +54,7 @@ has ref_start         => (is => 'ro', isa => Str,              default => sub { 
 has show_address      => (is => 'ro', isa => Bool,             default => sub { return !!0       });
 has show_array_indice => (is => 'ro', isa => Bool,             default => sub { return !!1       });
 has show_hash_indice  => (is => 'ro', isa => Bool,             default => sub { return !!0       });
-has deparse           => (is => 'ro', isa => Bool,             default => sub { return !!1       });
+has deparse           => (is => 'ro', isa => Bool,             default => sub { return !!0       });
 has colors            => (is => 'ro', isa => HashRef,          default => sub { return {
                                                                                         # string          => 'green',
                                                                                         # blessed         => 'magenta',
@@ -166,7 +167,7 @@ sub dsread {
         if ($currentIndicePerLevel % 2) {
           $self->_pushDesc('hash_separator', $self->hash_separator);
         } else {
-          $self->_pushDesc('hash_next', $self->hash_next) if ($currentIndicePerLevel > 2);
+          $self->_pushDesc('hash_next', $self->hash_next) if ($currentIndicePerLevel > 0);
           $self->_pushLine;
         }
         $show_indice = $self->show_hash_indice;
@@ -218,7 +219,7 @@ sub dsread {
       my $i = length($self->indent) x ($self->_currentLevel + 2);
       my $deparseopts = ["-sCv'Useless const omitted'"];
       my $code = 'sub ' . B::Deparse->new($deparseopts)->coderef2text($item);
-      my @code = map { s/^\s*//; s/\s*$//; $_ } grep { defined } split(/\R/, $code);
+      my @code = split(/\R/, $code);
       #
       # First item is no aligned
       #
@@ -246,7 +247,9 @@ sub dsread {
       if (defined($item)) {
         my $string = eval { "$item" }; ## no critic qw/BuiltinFunctions::ProhibitStringyEval/
         if (defined($string)) {
-          $self->_pushDesc($reftype eq 'REGEXP' ? 'regexp' : 'string', $string);
+          $self->_pushDesc($reftype eq 'REGEXP' ? 'regexp' :
+                           $reftype eq 'CODE' ? 'code' :
+                           'string', $string);
         } else {
           $self->_pushDesc('unknown', $self->unknown);
         }
@@ -274,15 +277,41 @@ sub dsread {
   # Prepare return value
   #
   my $rc;
-  if ($reftype && ! $alreadyScanned) {
-    if ($reftype eq 'ARRAY') {
-      $rc = $item
-    } elsif ($reftype eq 'HASH') {
-      $rc = [ map { $_ => $item->{$_} } sort { ($a // '') cmp ($b // '') } keys %{$item} ]
-    } elsif ($reftype eq 'SCALAR') {
-      $rc = [ ${$item} ]
-    } elsif ($reftype eq 'REF') {
-      $rc = [ ${$item} ]
+  if (! $alreadyScanned) {
+    if ($reftype) {
+      if ($reftype eq 'ARRAY') {
+        $rc = $item
+      } elsif ($reftype eq 'HASH') {
+        $rc = [ map { $_ => $item->{$_} } sort { ($a // '') cmp ($b // '') } keys %{$item} ]
+      } elsif ($reftype eq 'SCALAR') {
+        $rc = [ ${$item} ]
+      } elsif ($reftype eq 'REF') {
+        $rc = [ ${$item} ]
+      }
+    }
+    if ($blessed) {
+      $rc //= [];
+      my $expanded = Class::Inspector->methods($blessed, 'expanded');
+      if (defined($expanded) && reftype($expanded) eq 'ARRAY') {
+        my @expanded = @{$expanded};
+        my $class_idx = $[ + 1;
+        my $method_idx = $class_idx + 1;
+        my $ref_idx = $method_idx + 1;
+        my %public_methods    = map { $_->[$method_idx] => $_->[$ref_idx] } grep { $_->[$method_idx] !~ /^\_/   } grep { $_->[$class_idx] eq $blessed } @expanded;
+        my %private_methods   = map { $_->[$method_idx] => $_->[$ref_idx] } grep { $_->[$method_idx] =~ /^\_/   } grep { $_->[$class_idx] eq $blessed } @expanded;
+        my %inherited_methods = map { $_->[$method_idx] => $_->[$ref_idx] }                                       grep { $_->[$class_idx] ne $blessed } @expanded;
+        push(@{$rc}, {
+                      public_methods     => \%public_methods,
+                      private_methods    => \%private_methods,
+                      inherited_methods  => \%inherited_methods
+                     }
+            );
+      }
+      if (Class::Inspector->loaded($blessed)) {
+        push(@{$rc}, { loaded_filename => Class::Inspector->loaded_filename($blessed) });
+      } else {
+        push(@{$rc}, { resolved_filename => Class::Inspector->resolved_filename($blessed) });
+      }
     }
   }
 
