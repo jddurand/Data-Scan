@@ -40,7 +40,7 @@ has consumer => (
 
 =head2 consumer
 
-A object instance that is consuming the Data::Scan::Role::Consumer role.
+A object instance that is consuming the Data::Scan::Role::Consumer role. L<Data::Scan::Printer> is an example of an implementation consuming this role.
 
 =head1 SUBROUTINES/METHODS
 
@@ -124,7 +124,7 @@ sub process {
 
 =head1 SEE ALSO
 
-L<Data::Scan::Role::Consumer>
+L<Data::Scan::Role::Consumer>, L<Data::Scan::Printer>
 
 =cut
 
