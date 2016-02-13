@@ -10,7 +10,7 @@ package Data::Scan::Printer;
 # AUTHORITY
 
 use Exporter qw/import/;
-use vars qw/@EXPORT/;
+use vars qw/@EXPORT %Option/;
 use Data::Scan::Impl::Printer;
 use Moo;
 extends 'Data::Scan';
@@ -18,6 +18,10 @@ extends 'Data::Scan';
 # Using this module intentionaly means caller is ok to pollute its namespace
 #
 @EXPORT = qw/dspp/;
+#
+# User is advised to localized that
+#
+%Option = ();
 
 =head1 DESCRIPTION
 
@@ -44,7 +48,7 @@ Print to Data::Scan::Impl::Printer's handle a dumped vision of @arguments. An in
 =cut
 
 sub dspp {
-  my $consumer = Data::Scan::Impl::Printer->new(%Data::Scan::Printer::Option);
+  my $consumer = Data::Scan::Impl::Printer->new(%Option);
   __PACKAGE__->new(consumer => $consumer)->process(@_);
   #
   # We know this consumer has a dsprint method
