@@ -1,6 +1,20 @@
 Changelog for Data-Scan
 
-0.003 2016-02-12T05:39:54
+0.004 2016-02-13T06:33:41
+ [Jean-Damien Durand <jeandamiendurand@free.fr>]
+ - dzil xtest && max_depth option for Impl/Printer.pm
+ - A lot of POD
+ - Scan/Printer.pm: Initialize %Option
+ - Impl/Printer.pm: add indices_full option
+ - Scan/Printer.pm: more POD with example of deparse and link to
+   Data::Scan::Impl::Printer
+ - t/printer.t: Add Moo object in test
+ - Impl/Printer.pm: Note on methods introspection
+ - Impl/Printer.pm: Class introspection
+ - Add deparse to dspp and remove logic trying to guess if we can ansicolor
+   or not
+
+0.003 2016-02-12T05:39:54Z
  [Jean-Damien Durand <jeandamiendurand@free.fr>]
  - Uniformization of required API: everything is prefixed with ds
  - Removed output from role requirements

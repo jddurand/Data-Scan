@@ -8,7 +8,7 @@ Data::Scan - Stackfree arbitrary data scanner
 
 =head1 VERSION
 
-version 0.003
+version 0.004
 
 =head1 SYNOPSIS
 
@@ -24,6 +24,12 @@ version 0.003
 =head1 DESCRIPTION
 
 Data::Scan is a stackfree scanner of arbitrary data. It has no other intelligence but scanning its arguments and asking for a consumer to deal with every item.
+
+=head1 CONSTRUCTOR OPTIONS
+
+=head2 consumer
+
+A object instance that is consuming the Data::Scan::Role::Consumer role.
 
 =head1 SUBROUTINES/METHODS
 
@@ -60,6 +66,10 @@ Indicates to the consumer that an unfold of $item is ending. Return value is ign
 Indicates to the consumer that scanning is ending. Return value of consumer->end() will be the return value of $self->process(@arguments).
 
 =back
+
+=head1 SEE ALSO
+
+L<Data::Scan::Role::Consumer>
 
 =for :stopwords cpan testmatrix url annocpan anno bugtracker rt cpants kwalitee diff irc mailto metadata placeholders metacpan
 
