@@ -3,7 +3,7 @@ use warnings FATAL => 'all';
 
 package Data::Scan::Printer;
 
-# ABSTRACT: Data::Scan::Printer - Example of a printer consumer for Data::Scan
+# ABSTRACT: Example of a printer consumer for Data::Scan
 
 # VERSION
 
