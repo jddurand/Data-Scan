@@ -36,6 +36,12 @@ has consumer => (
                  isa => ConsumerOf['Data::Scan::Role::Consumer'],
                 );
 
+=head1 CONSTRUCTOR OPTIONS
+
+=head2 consumer
+
+A object instance that is consuming the Data::Scan::Role::Consumer role.
+
 =head1 SUBROUTINES/METHODS
 
 =head2 $class->new(consumer => ConsumerOf['Data::Scan::Role::Consumer'])
@@ -115,5 +121,11 @@ sub process {
   #
   return $consumer->dsend()
 }
+
+=head1 SEE ALSO
+
+L<Data::Scan::Role::Consumer>
+
+=cut
 
 1;

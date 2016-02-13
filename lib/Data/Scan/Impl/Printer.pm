@@ -11,7 +11,7 @@ package Data::Scan::Impl::Printer;
 
 =head1 DESCRIPTION
 
-Data::Scan::Impl::Printer is an example of a consumer for Data::Scan. This implementation is sort of Data::Printer alternative.
+Data::Scan::Impl::Printer is an example of an implementation of the Data::Scan::Role::Consumer role. This implementation is sort of Data::Printer alternative.
 
 =head1 SYNOPSIS
 
@@ -50,7 +50,7 @@ my $_NON_ASCII_PRINT_RE = qr/[^$_ASCII_PRINT]/;
 
 =head1 CONSTRUCTOR OPTIONS
 
-Here the list of supported options, every name is preceeded by its type.
+Here the list of supported options, every name is preceded by its type.
 
 =cut
 
@@ -70,6 +70,14 @@ Indentation. Default is '  '.
 
 has indent            => (is => 'ro', isa => Str,              default => sub { return '  '      });
 
+=head2 PositiveOrZeroInt max_depth
+
+Maximum unfold level. Default is 0, meaning no maximum.
+
+=cut
+
+has max_depth         => (is => 'ro', isa => PositiveOrZeroInt, default => sub { return 0        });
+
 =head2 Str undef
 
 Representation of an undefined value. Default is 'undef'.
@@ -78,7 +86,7 @@ Representation of an undefined value. Default is 'undef'.
 
 has undef             => (is => 'ro', isa => Str,              default => sub { return 'undef'   });
 
-=head2 Str unkown
+=head2 Str unknown
 
 Representation of an unknown value. Default is '???'.
 
@@ -224,7 +232,7 @@ has ref_end           => (is => 'ro', isa => Str,              default => sub { 
 
 =head2 Bool with_address
 
-Show adress of any reference. Default is a false value.
+Show address of any reference. Default is a false value.
 
 =cut
 
@@ -272,7 +280,7 @@ has with_filename     => (is => 'ro', isa => Bool,             default => sub { 
 
 =head2 HashRef[Str|ArrayRef] colors
 
-Explicit ANSI color per functionality. The absence of a color definition means the functionnality will be printed as-is. A color is defined following the Term::ANSIColor specification, as a string or an array reference.
+Explicit ANSI color per functionality. The absence of a color definition means the corresponding value will be printed as-is. A color is defined following the Term::ANSIColor specification, as a string or an array reference.
 
 Supported keys of this hash and their eventual default setup is:
 
@@ -417,6 +425,15 @@ has _seen                   => (is => 'rw', isa => HashRef[PositiveOrZeroInt],  
 #
 # Required methods
 #
+
+=head1 SUBROUTINES/METHODS
+
+=head2 dsstart
+
+Will be called when scanning is starting. It is resetting all internal attributes used to keep the context.
+
+=cut
+
 sub dsstart  {
   my ($self) = @_;
   $self->_clear_lines;
@@ -424,9 +441,22 @@ sub dsstart  {
   $self->_clear_currentIndicePerLevel;
   $self->_clear_currentReftypePerLevel;
   $self->_clear_seen;
+  return
 }
 
-sub dsend { !!1 }
+=head2 dsend
+
+Will be called when scanning is ending. Returns a true value.
+
+=cut
+
+sub dsend { return !!1 }
+
+=head2 dsprint
+
+Print current output to $self->handle. If $self->handle is blessed and can do the 'print' method, this will be used. Otherwise, $self->handle will be considered eligible for the native perl's print command. Returns a string.
+
+=cut
 
 sub dsprint {
   my ($self, $handle) = @_;
@@ -439,6 +469,12 @@ sub dsprint {
     return print $handle $string
   }
 }
+
+=head2 dsopen
+
+Called when an unfolded content is opened.
+
+=cut
 
 sub dsopen {
   my ($self, $item) = @_;
@@ -454,6 +490,12 @@ sub dsopen {
   return
 }
 
+=head2 dsclose
+
+Called when an unfolded content is closed.
+
+=cut
+
 sub dsclose {
   my ($self, $item) = @_;
 
@@ -466,6 +508,12 @@ sub dsclose {
 
   return
 }
+
+=head2 dsread
+
+Called when an unfolded content is read. Returns eventual unfolded content.
+
+=cut
 
 sub dsread {
   my ($self, $item) = @_;
@@ -610,6 +658,14 @@ sub dsread {
   # Prepare return value
   #
   my $rc;
+  #
+  # Max depth option value ?
+  #
+  my $max_depth = $self->max_depth;
+  return $rc if ($max_depth && $currentLevel >= $max_depth);
+  #
+  # Unfold if not already done and if this can be unfolded
+  #
   if (! $alreadyScanned) {
     if ($reftype) {
       if ($reftype eq 'ARRAY') {
