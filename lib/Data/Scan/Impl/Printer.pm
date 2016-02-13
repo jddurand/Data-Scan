@@ -9,6 +9,24 @@ package Data::Scan::Impl::Printer;
 
 # AUTHORITY
 
+=head1 DESCRIPTION
+
+Data::Scan::Impl::Printer is an example of a consumer for Data::Scan. This implementation is sort of Data::Printer alternative.
+
+=head1 SYNOPSIS
+
+    use strict;
+    use warnings FATAL => 'all';
+    use Data::Scan;
+    use Data::Scan::Impl::Printer;
+
+    my $this = bless([ 'var1', 'var2', {'a' => 'b', 'c' => 'd'}, \undef, \\undef, [], sub { return 'something' } ], 'TEST');
+    my $consumer = Data::Scan::Impl::Printer->new(with_deparse => 1);
+    Data::Scan->new(consumer => $consumer)->process($this);
+    $consumer->dsprint;
+
+=cut
+
 use B::Deparse;
 use Class::Inspector;
 use Moo;
@@ -29,63 +47,365 @@ use Types::Common::Numeric -all;
 #
 my $_ASCII_PRINT = quotemeta(join('', map { chr } 33..126));
 my $_NON_ASCII_PRINT_RE = qr/[^$_ASCII_PRINT]/;
-#
-# External attributes
-#
+
+=head1 CONSTRUCTOR OPTIONS
+
+Here the list of supported options, every name is preceeded by its type.
+
+=cut
+
+=head2 FileHandle handle
+
+Handle for for dsprint(). Default is \*STDOUT.
+
+=cut
+
 has handle            => (is => 'ro', isa => FileHandle,       default => sub { return \*STDOUT  });
+
+=head2 Str indent
+
+Indentation. Default is '  '.
+
+=cut
+
 has indent            => (is => 'ro', isa => Str,              default => sub { return '  '      });
+
+=head2 Str undef
+
+Representation of an undefined value. Default is 'undef'.
+
+=cut
+
 has undef             => (is => 'ro', isa => Str,              default => sub { return 'undef'   });
+
+=head2 Str unkown
+
+Representation of an unknown value. Default is '???'.
+
+=cut
+
 has unknown           => (is => 'ro', isa => Str,              default => sub { return '???'     });
+
+=head2 Str newline
+
+Separator between lines. Default is "\n".
+
+=cut
+
 has newline           => (is => 'ro', isa => Str,              default => sub { return "\n"      });
-has ansicolor         => (is => 'ro', isa => Bool,             default => sub { return !!1       });
-has array_start       => (is => 'ro', isa => Str,              default => sub { return ' ['      });
+
+=head2 Bool with_ansicolor
+
+Use ANSI colors. Default is a false value if $ENV{ANSI_COLORS_DISABLED} exists, else a true value if $ENV{ANSI_COLORS_ENABLED} exists, else a false value if L<Win32::Console::ANSI> cannot be loaded and you are on Windows, else a true value.
+
+=cut
+
+has with_ansicolor    => (is => 'ro', isa => Bool,             default => sub { return __PACKAGE__->_canColor });
+
+=head2 Str array_start
+
+Representation of the start of an array. Default is '['.
+
+=cut
+
+has array_start       => (is => 'ro', isa => Str,              default => sub { return '['      });
+
+=head2 Str array_next
+
+Representation of separator between array elements. Default is ','.
+
+=cut
+
 has array_next        => (is => 'ro', isa => Str,              default => sub { return ','       });
+
+=head2 Str array_end
+
+Representation of the end of an array. Default is ']'.
+
+=cut
+
 has array_end         => (is => 'ro', isa => Str,              default => sub { return ']'       });
+
+=head2 Str hash_start
+
+Representation of the start of a hash. Default is '{'.
+
+=cut
+
 has hash_start        => (is => 'ro', isa => Str,              default => sub { return ' {'      });
-has hash_end          => (is => 'ro', isa => Str,              default => sub { return '}'       });
+
+=head2 Str hash_next
+
+Representation of separator between hash elements, where an element is the tuple {key,value}. Default is ','.
+
+=cut
+
 has hash_next         => (is => 'ro', isa => Str,              default => sub { return ','       });
+
+=head2 Str hash_end
+
+Representation of the end of a hash. Default is '}'.
+
+=cut
+
+has hash_end          => (is => 'ro', isa => Str,              default => sub { return '}'       });
+
+=head2 Str hash_separator
+
+Representation of hash separator between a key and a value. Default is '=>'.
+
+=cut
+
 has hash_separator    => (is => 'ro', isa => Str,              default => sub { return ' => '    });
+
+=head2 Str indice_start
+
+Representation of internal indice count start. Default is '['.
+
+=cut
+
 has indice_start      => (is => 'ro', isa => Str,              default => sub { return '['       });
+
+=head2 Str indice_end
+
+Representation of internal indice count end. Default is ']'.
+
+=cut
+
 has indice_end        => (is => 'ro', isa => Str,              default => sub { return '] '      });
+
+=head2 Bool with_indices_full
+
+Use full internal indice representation, i.e. show indices from the top level up to current level, as if the tree would have been only composed of array references to array references, and so on. Default is a true value.
+
+=cut
+
+has with_indices_full => (is => 'ro', isa => Bool,             default => sub { return !!1       });
+
+=head2 Str address_start
+
+Representation of the start of an address. Default is '('.
+
+=cut
+
 has address_start     => (is => 'ro', isa => Str,              default => sub { return '('       });
+
+=head2 Str address_format
+
+Format of an address. Default is '0x%x'.
+
+=cut
+
+has address_format    => (is => 'ro', isa => Str,              default => sub { return '0x%x'    });
+
+=head2 Str address_end
+
+Representation of the end of an address. Default is ')'.
+
+=cut
+
 has address_end       => (is => 'ro', isa => Str,              default => sub { return ')'       });
-has blessed           => (is => 'ro', isa => Str,              default => sub { return ''        });
+
+=head2 Str ref_start
+
+Representation of the start of a reference. Default is '\'.
+
+=cut
+
 has ref_start         => (is => 'ro', isa => Str,              default => sub { return '\\'      });
-has show_address      => (is => 'ro', isa => Bool,             default => sub { return !!0       });
-has show_array_indice => (is => 'ro', isa => Bool,             default => sub { return !!1       });
-has show_hash_indice  => (is => 'ro', isa => Bool,             default => sub { return !!1       });
-has indices_full      => (is => 'ro', isa => Bool,             default => sub { return !!1       });
-has deparse           => (is => 'ro', isa => Bool,             default => sub { return !!0       });
-has methods           => (is => 'ro', isa => Bool,             default => sub { return !!1       });
-has colors            => (is => 'ro', isa => HashRef,          default => sub { return {
-                                                                                        # string          => 'green',
-                                                                                        # blessed         => 'magenta',
-                                                                                        array_start     => 'magenta',
-                                                                                        array_next      => 'magenta',
-                                                                                        array_end       => 'magenta',
 
-                                                                                        hash_start      => 'magenta',
-                                                                                        hash_separator  => 'magenta',
-                                                                                        hash_next       => 'magenta',
-                                                                                        hash_end        => 'magenta',
+=head2 Str ref_end
 
-                                                                                        # ref_start       => 'bold yellow',
+Representation of the end of a reference. Default is the empty string.
 
-                                                                                        indice_full     => 'magenta',
-                                                                                        indice_start    => 'magenta',
-                                                                                        indice_value    => 'magenta',
-                                                                                        indice_end      => 'magenta',
+=cut
 
-                                                                                        undef           => 'red',
-                                                                                        unknown         => 'bold red',
-                                                                                        address_start   => 'magenta',
-                                                                                        address         => 'magenta',
-                                                                                        address_end     => 'magenta',
-                                                                                        code            => 'yellow',
-                                                                                        already_scanned => 'blink green',
-                                                                                        deparse         => 'green',
-                                                                                       }
-                                                                              });
+has ref_end           => (is => 'ro', isa => Str,              default => sub { return ''        });
+
+=head2 Bool with_address
+
+Show adress of any reference. Default is a false value.
+
+=cut
+
+has with_address      => (is => 'ro', isa => Bool,             default => sub { return !!0       });
+
+=head2 Bool with_array_indice
+
+Show array indices. Default is a true value.
+
+=cut
+
+has with_array_indice => (is => 'ro', isa => Bool,             default => sub { return !!1       });
+
+=head2 Bool with_hash_indice
+
+Show hash indices. Default is a true value.
+
+=cut
+
+has with_hash_indice  => (is => 'ro', isa => Bool,             default => sub { return !!1       });
+
+=head2 Bool with_deparse
+
+Show deparsed subroutine references. Default is a false value.
+
+=cut
+
+has with_deparse      => (is => 'ro', isa => Bool,             default => sub { return !!0       });
+
+=head2 Bool with_methods
+
+Show public, private and inherited methods. Default is a true value.
+
+=cut
+
+has with_methods      => (is => 'ro', isa => Bool,             default => sub { return !!1       });
+
+=head2 Bool with_filename
+
+Show loaded or resolved filename. Default is a false value.
+
+=cut
+
+has with_filename     => (is => 'ro', isa => Bool,             default => sub { return !!0       });
+
+=head2 HashRef[Str|ArrayRef] colors
+
+Explicit ANSI color per functionality. The absence of a color definition means the functionnality will be printed as-is. A color is defined following the Term::ANSIColor specification, as a string or an array reference.
+
+Supported keys of this hash and their eventual default setup is:
+
+=over
+
+=item string => undef
+
+Generic stringified value.
+
+=item blessed => 'bold'
+
+Blessed name.
+
+=item regexp => undef
+
+Stringified regexp.
+
+=item array_start => 'blue'
+
+Array start.
+
+=item array_next => 'blue'
+
+Separator between array elements.
+
+=item array_end => 'blue'
+
+Array end.
+
+=item hash_start => 'blue'
+
+Hash start.
+
+=item hash_separator => 'blue'
+
+Separator between hash key and value.
+
+=item hash_next => 'blue'
+
+Separator between a hash value and the next hash key.
+
+=item hash_end => 'blue'
+
+Hash end.
+
+=item ref_start => undef
+
+Reference start.
+
+=item ref_end => undef
+
+Reference end.
+
+=item indice_full => 'magenta'
+
+Full indice.
+
+=item indice_start => 'magenta'
+
+Indice start.
+
+=item indice_value => 'magenta'
+
+Indice value.
+
+=item indice_end => 'magenta'
+
+Indice end.
+
+=item undef => 'red'
+
+The undefined value.
+
+=item unknown => 'bold red'
+
+An unknown value.
+
+=item address_start => 'magenta'
+
+Address start.
+
+=item address_value => 'magenta'
+
+Address value.
+
+=item address_end => 'magenta'
+
+Address end.
+
+=item code => 'yellow'
+
+Deparsed or stringified code reference.
+
+=item already_scanned => 'green'
+
+Already scanned reference. Such item will always be represented using "var[...]", where [...] is the full indice representation.
+
+=back
+
+=cut
+
+has colors            => (is => 'ro', isa => HashRef[Str|ArrayRef|Undef], default => sub {
+                            return {
+                                    blessed         => 'bold',
+                                    string          => undef,
+                                    regexp          => undef,
+
+                                    array_start     => 'blue',
+                                    array_next      => 'blue',
+                                    array_end       => 'blue',
+
+                                    hash_start      => 'blue',
+                                    hash_separator  => 'blue',
+                                    hash_next       => 'blue',
+                                    hash_end        => 'blue',
+
+                                    ref_start       => undef,
+                                    ref_end         => undef,
+
+                                    indice_full     => 'magenta',
+                                    indice_start    => 'magenta',
+                                    indice_value    => 'magenta',
+                                    indice_end      => 'magenta',
+
+                                    undef           => 'red',
+                                    unknown         => 'bold red',
+                                    address_start   => 'magenta',
+                                    address_value   => 'magenta',
+                                    address_end     => 'magenta',
+                                    code            => 'yellow',
+                                    already_scanned => 'green'
+                                   }
+                          });
 #
 # Internal attributes
 #
@@ -109,9 +429,9 @@ sub dsstart  {
 sub dsend { !!1 }
 
 sub dsprint {
-  my ($self) = @_;
+  my ($self, $handle) = @_;
 
-  my $handle = $self->handle;
+  $handle //= $self->handle;
   my $string = join($self->newline, @{$self->_lines});
   if (Scalar::Util::blessed($handle) && $handle->can('print')) {
     return $handle->print($string)
@@ -142,6 +462,7 @@ sub dsclose {
   my $reftype = reftype $item;
   if    ($reftype eq 'ARRAY') { $self->_pushLine; $self->_pushDesc('array_end', $self->array_end) }
   elsif ($reftype eq 'HASH')  { $self->_pushLine; $self->_pushDesc('hash_end', $self->hash_end)   }
+  else                        {                   $self->_pushDesc('ref_end',   $self->ref_end)   }
 
   return
 }
@@ -165,7 +486,7 @@ sub dsread {
       if ($currentReftypePerLevel eq 'ARRAY') {
         $self->_pushDesc('array_next', $self->array_next) if ($currentIndicePerLevel > $[);
         $self->_pushLine;
-        $show_indice = $self->show_array_indice
+        $show_indice = $self->with_array_indice
       } else {
         if ($currentIndicePerLevel % 2) {
           $self->_pushDesc('hash_separator', $self->hash_separator);
@@ -173,10 +494,10 @@ sub dsread {
           $self->_pushDesc('hash_next', $self->hash_next) if ($currentIndicePerLevel > 0);
           $self->_pushLine;
         }
-        $show_indice = $self->show_hash_indice
+        $show_indice = $self->with_hash_indice
       }
       if ($show_indice) {
-        if ($self->indices_full) {
+        if ($self->with_indices_full) {
           my @levels = (
                         $self->_concatenateLevels($currentLevel - 1),
                         $self->indice_start . $currentIndicePerLevel . $self->indice_end
@@ -200,12 +521,10 @@ sub dsread {
   # See how this can be displayed
   #
   my $alreadyScanned;
-  my $hex;
   if ($refaddr) {
-    $hex = sprintf('0x%x', $refaddr);
     my $seen = $self->_seen;
-    if (exists $seen->{$hex}) {
-      $alreadyScanned = $seen->{$hex};
+    if (exists $seen->{$refaddr}) {
+      $alreadyScanned = $seen->{$refaddr};
       #
       # Already scanned !
       #
@@ -220,7 +539,7 @@ sub dsread {
       #
       my $levels = join('', @levels);
       $levels =~ s/\s//g;
-      $seen->{$hex} = "var$levels"
+      $seen->{$refaddr} = "var$levels"
     }
   }
   if (! $alreadyScanned) {
@@ -229,8 +548,8 @@ sub dsread {
       # A regexp appears as being blessed in perl.
       # Priority is given to blessed name except if it is a regexp.
       #
-      $self->_pushDesc('string', $blessed)
-    } elsif ($reftype eq 'CODE' && $self->deparse) {
+      $self->_pushDesc('blessed', $blessed)
+    } elsif ($reftype eq 'CODE' && $self->with_deparse) {
       #
       # Code deparse with B::Deparse
       #
@@ -278,15 +597,11 @@ sub dsread {
     #
     # Show address ?
     #
-    if ($refaddr && $self->show_address) {
+    if ($refaddr && $self->with_address) {
       $self->_pushDesc('address_start', $self->address_start);
-      $self->_pushDesc('address', $hex);
+      $self->_pushDesc('address_value', length($self->address_format) ? sprintf($self->address_format, $refaddr) : $refaddr);
       $self->_pushDesc('address_end', $self->address_end)
     }
-    #
-    # Show blessed indication ?
-    #
-    $self->_pushDesc('blessed', $self->blessed) if $blessed
   }
   #
   # Eventually increase indice number
@@ -307,7 +622,7 @@ sub dsread {
         $rc = [ ${$item} ]
       }
     }
-    if ($blessed && $self->methods) {
+    if ($blessed && $self->with_methods) {
       $rc //= [];
       my $expanded = Class::Inspector->methods($blessed, 'expanded');
       if (defined($expanded) && reftype($expanded) eq 'ARRAY') {
@@ -325,10 +640,12 @@ sub dsread {
                      }
             )
       }
-      if (Class::Inspector->loaded($blessed)) {
-        push(@{$rc}, { loaded_filename => Class::Inspector->loaded_filename($blessed) })
-      } else {
-        push(@{$rc}, { resolved_filename => Class::Inspector->resolved_filename($blessed) })
+      if ($self->with_filename) {
+        if (Class::Inspector->loaded($blessed)) {
+          push(@{$rc}, { filename => Class::Inspector->loaded_filename($blessed) })
+        } else {
+          push(@{$rc}, { filename => Class::Inspector->resolved_filename($blessed) })
+        }
       }
     }
   }
@@ -382,9 +699,9 @@ sub _pushDesc {
     $desc = "\"$desc\"" unless looks_like_number($desc);
   }
 
-  if ($self->_canColor && $self->ansicolor) {
+  if ($self->with_ansicolor) {
     my $color = $self->colors->{$what};
-    if ($color) {
+    if (defined($color)) {
       my $refcolor = reftype($color);
       if (! $refcolor) {
         $self->_lines->[-1] .= colored($desc, $color);
@@ -408,7 +725,7 @@ sub _currentDesc {
 }
 
 sub _canColor {
-  my ($self) = @_;
+  my ($class) = @_;
   #
   # Mimic Data::Printer use of $ENV{ANSI_COLORS_DISABLED}
   #
@@ -423,6 +740,16 @@ sub _canColor {
   return 0 if (is_os_type('Windows') && ! $_HAVE_Win32__Console__ANSI);
   return 1
 }
+
+=head1 NOTES
+
+If with_methods option is on, L<Class::Inspector> (and not L<Package::Stash> like what does L<Data::Printer>) is used to get public, private and other (labelled inherited, then) methods. Thus, notion of methods, usage of @ISA etc, could look different to what L<Data::Printer> say.
+
+=head1 SEE ALSO
+
+L<Class::Inspector>, L<Data::Scan::Impl::Printer>, L<Term::ANSIColor>, L<Win32::Console::ANSI>
+
+=cut
 
 with 'Data::Scan::Role::Consumer';
 

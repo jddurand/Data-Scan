@@ -34,9 +34,7 @@ Data::Scan::Printer is polluting user's namespace with a dspp() method, showing 
     use Data::Scan::Printer;
 
     my $this = bless([ 'var1', 'var2', {'a' => 'b', 'c' => 'd'}, \undef, \\undef, [], sub { return 'something' } ], 'TEST');
-    local %Data::Scan::Printer::Option = (
-      deparse => 1
-    );
+    local %Data::Scan::Printer::Option = (with_deparse => 1);
     dspp($this);
 
 =head1 SUBROUTINES/METHODS
@@ -56,13 +54,9 @@ sub dspp {
   $consumer->dsprint
 }
 
-=head1 NOTES
-
-If methods option is on, L<Class::Inspector> (and not L<Package::Stash> like what does L<Data::Printer>) is used to get public, private and other (labelled inherited, then) methods. Thus, notion of methods, usage of @ISA etc, could look different to what L<Data::Printer> say.
-
 =head1 SEE ALSO
 
-L<Data::Scan::Impl::Printer>, L<Data::Printer>, L<Class::Inspector>
+L<Data::Scan>, L<Data::Scan::Impl::Printer>
 
 =cut
 
