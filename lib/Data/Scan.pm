@@ -9,7 +9,6 @@ package Data::Scan;
 
 # AUTHORITY
 
-use Carp qw/croak/;
 use Moo;
 use Scalar::Util qw/refaddr reftype/;
 use Types::Standard qw/ConsumerOf/;
