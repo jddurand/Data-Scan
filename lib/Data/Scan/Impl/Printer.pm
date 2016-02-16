@@ -45,7 +45,7 @@ use Types::Common::Numeric -all;
 #
 # My way of matching only printable ASCII characters
 #
-my $_ASCII_PRINT = quotemeta(join('', map { chr } 33..126));
+my $_ASCII_PRINT = quotemeta(join('', map { chr } (32,33..126)));
 my $_NON_ASCII_PRINT_RE = qr/[^$_ASCII_PRINT]/;
 
 =head1 CONSTRUCTOR OPTIONS
