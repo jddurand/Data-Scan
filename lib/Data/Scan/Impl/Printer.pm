@@ -486,7 +486,7 @@ sub dsopen {
   elsif ($reftype eq 'HASH')  { $self->_pushDesc('hash_start',  $self->hash_start)  }
   else                        { $self->_pushDesc('ref_start',   $self->ref_start)   }
 
-  $self->_pushLevel($reftype);
+  $self->_pushLevel($reftype, $self->_currentReftypePerLevel, $self->_currentIndicePerLevel);
   return
 }
 
@@ -499,7 +499,7 @@ Called when an unfolded content is closed.
 sub dsclose {
   my ($self, $item) = @_;
 
-  $self->_popLevel;
+  $self->_popLevel($self->_currentReftypePerLevel, $self->_currentIndicePerLevel);
 
   my $reftype = reftype $item;
   if    ($reftype eq 'ARRAY') { $self->_pushLine; $self->_pushDesc('array_end', $self->array_end) }
@@ -521,14 +521,20 @@ sub dsread {
   my $refaddr = refaddr($item);
   my $blessed = Scalar::Util::blessed($item) // '';
   my $reftype = reftype($item) // '';
-
+  #
+  # Precompute things that always have the same value
+  #
+  my $indice_start = $self->indice_start;
+  my $indice_end = $self->indice_end;
+  my $currentReftypePerLevelArrayRef = $self->_currentReftypePerLevel;
+  my $currentIndicePerLevelArrayRef = $self->_currentIndicePerLevel;
   #
   # Push a newline or a '=>' and prefix with indice if in a fold
   #
   my $currentLevel = $self->_currentLevel;
   if ($currentLevel) {
-    my $currentReftypePerLevel = $self->_currentReftypePerLevel->[-1];
-    my $currentIndicePerLevel = $self->_currentIndicePerLevel->[-1];
+    my $currentReftypePerLevel = $currentReftypePerLevelArrayRef->[-1];
+    my $currentIndicePerLevel = $currentIndicePerLevelArrayRef->[-1];
     if ($currentReftypePerLevel eq 'ARRAY' or $currentReftypePerLevel eq 'HASH') {
       my $show_indice;
       if ($currentReftypePerLevel eq 'ARRAY') {
@@ -547,8 +553,8 @@ sub dsread {
       if ($show_indice) {
         if ($self->with_indices_full) {
           my @levels = (
-                        $self->_concatenateLevels($currentLevel - 1),
-                        $self->indice_start . $currentIndicePerLevel . $self->indice_end
+                        $self->_concatenateLevels($currentLevel - 1, $indice_start, $currentIndicePerLevelArrayRef, $indice_end),
+                        $indice_start . $currentIndicePerLevel . $indice_end
                        );
           #
           # As in a \var reference (see below), we want the levels to not have eventual space
@@ -557,13 +563,13 @@ sub dsread {
           $levels =~ s/\s//g;
           $self->_pushDesc('indice_full', $levels)
         } else {
-          $self->_pushDesc('indice_start', $self->indice_start);
+          $self->_pushDesc('indice_start', $indice_start);
           $self->_pushDesc('indice_value', $currentIndicePerLevel);
-          $self->_pushDesc('indice_end', $self->indice_end)
+          $self->_pushDesc('indice_end', $indice_end)
         }
       }
     }
-    $self->_currentIndicePerLevel->[-1]++
+    $currentIndicePerLevelArrayRef->[-1]++
   }
   #
   # See how this can be displayed
@@ -581,7 +587,7 @@ sub dsread {
       #
       # Determine the "location" in terms of an hypothetical "@var" describing the tree
       # Note that we already increased $currentLevel
-      my @levels = $self->_concatenateLevels($currentLevel);
+      my @levels = $self->_concatenateLevels($currentLevel, $indice_start, $currentIndicePerLevelArrayRef, $indice_end);
       #
       # We want the levels to not have eventual space
       #
@@ -613,9 +619,9 @@ sub dsread {
       # The first is aligned
       #
       if (@code) {
-        $self->_pushLevel($reftype);
+        $self->_pushLevel($reftype, $currentReftypePerLevelArrayRef, $currentIndicePerLevelArrayRef);
         map { $self->_pushLine; $self->_pushDesc('code', $_) } @code;
-        $self->_popLevel($reftype)
+        $self->_popLevel($currentReftypePerLevelArrayRef, $currentIndicePerLevelArrayRef)
       }
     } elsif ((! $reftype)
                ||
@@ -646,8 +652,9 @@ sub dsread {
     # Show address ?
     #
     if ($refaddr && $self->with_address) {
+      my $address_format = $self->address_format;
       $self->_pushDesc('address_start', $self->address_start);
-      $self->_pushDesc('address_value', length($self->address_format) ? sprintf($self->address_format, $refaddr) : $refaddr);
+      $self->_pushDesc('address_value', length($address_format) ? sprintf($address_format, $refaddr) : $refaddr);
       $self->_pushDesc('address_end', $self->address_end)
     }
   }
@@ -712,28 +719,28 @@ sub dsread {
 # Internal methods
 #
 sub _concatenateLevels {
-  my ($self, $level) = @_;
+  my ($self, $level, $indice_start, $currentIndicePerLevelArrayRef, $indice_end) = @_;
   my @levels = ();
   while ($level-- > 0) {
-    unshift(@levels, $self->indice_start . ($self->_currentIndicePerLevel->[$level] - 1) . $self->indice_end)
+    unshift(@levels, $indice_start . ($currentIndicePerLevelArrayRef->[$level] - 1) . $indice_end)
   }
   return @levels
 }
 
 sub _pushLevel {
-  my ($self, $reftype) = @_;
+  my ($self, $reftype, $currentReftypePerLevelArrayRef, $currentIndicePerLevelArrayRef) = @_;
 
-  push(@{$self->_currentReftypePerLevel}, $reftype);
-  push(@{$self->_currentIndicePerLevel}, $reftype eq 'ARRAY' ? $[ : 0);       # Only used for ARRAY
+  push(@{$currentReftypePerLevelArrayRef}, $reftype);
+  push(@{$currentIndicePerLevelArrayRef}, $reftype eq 'ARRAY' ? $[ : 0);       # Only used for ARRAY
   $self->_currentLevel($self->_currentLevel + 1);
   return
 }
 
 sub _popLevel {
-  my ($self) = @_;
+  my ($self, $currentReftypePerLevelArrayRef, $currentIndicePerLevelArrayRef) = @_;
 
-  pop(@{$self->_currentReftypePerLevel});
-  pop(@{$self->_currentIndicePerLevel});
+  pop(@{$currentReftypePerLevelArrayRef});
+  pop(@{$currentIndicePerLevelArrayRef});
   $self->_currentLevel($self->_currentLevel - 1);
   return
 }
@@ -747,12 +754,12 @@ sub _pushLine {
 sub _pushDesc {
   my ($self, $what, $desc) = @_;
 
-  if ($what eq 'string') {
+  if ($what eq 'string' && ! looks_like_number($desc)) {
     #
-    # Detect any non ANSI character and enclose within ""
+    # Detect any non ANSI character and enclose result within ""
     #
-    $desc =~ s/$_NON_ASCII_PRINT_RE/sprintf('\\x{%x}', ord(${^MATCH}))/egp;
-    $desc = "\"$desc\"" unless looks_like_number($desc);
+    $desc =~ s/$_NON_ASCII_PRINT_RE/sprintf('\\x{%x}', ord(${^MATCH}))/egpo;
+    $desc = '"' . $desc . '"'
   }
 
   if ($self->with_ansicolor) {
@@ -773,11 +780,6 @@ sub _pushDesc {
     $self->_lines->[-1] .= $desc;
   }
   return
-}
-
-sub _currentDesc {
-  my ($self) = @_;
-  return $self->_lines->[-1]
 }
 
 sub _canColor {
