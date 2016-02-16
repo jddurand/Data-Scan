@@ -593,10 +593,10 @@ sub dsopen {
     #
     # Here $self->_currentLevel is the value before we increase it
     #
-    if (my $currentLevel = $self->_currentLevel) {
+    if ($self->_currentLevel) {
       $self->_push_concatenatedLevels($self->_get_concatenatedLevels(-1) .
                                       $self->_indice_start_nospace .
-                                      ($self->_get_currentIndicePerLevel(-1) - 1) .
+                                      $self->_get_currentIndicePerLevel(-1) .
                                       $self->_indice_end_nospace)
     } else {
       $self->_push_concatenatedLevels('');
@@ -652,12 +652,15 @@ sub dsread {
   my $indice_start_nospace           = $self->_indice_start_nospace;
   my $indice_end_nospace             = $self->_indice_end_nospace;
   #
-  # Push a newline or a '=>' and prefix with indice if in a fold
+  # Increase indice if we reading something unfolded
   #
   my $currentLevel = $self->_currentLevel;
+  my $currentIndicePerLevel = $currentLevel ? $self->_set_currentIndicePerLevel(-1, $self->_get_currentIndicePerLevel(-1) + 1) : undef;
+  #
+  # Push a newline or a '=>' and prefix with indice if in a fold
+  #
   if ($currentLevel) {
     my $currentReftypePerLevel = $self->_get_currentReftypePerLevel(-1);
-    my $currentIndicePerLevel = $self->_get_currentIndicePerLevel(-1);
     if ($currentReftypePerLevel eq 'ARRAY' or $currentReftypePerLevel eq 'HASH') {
       my $show_indice;
       if ($currentReftypePerLevel eq 'ARRAY') {
@@ -688,7 +691,6 @@ sub dsread {
         }
       }
     }
-    $self->_set_currentIndicePerLevel(-1, $self->_get_currentIndicePerLevel(-1) + 1)
   }
   #
   # See how this can be displayed
@@ -704,10 +706,12 @@ sub dsread {
     } else {
       #
       # Determine the "location" in terms of an hypothetical "@var" describing the tree
-      # Note that we already increased $currentLevel
       #
       my $var = 'var';
-      $var .= $self->_get_concatenatedLevels(-1) . $indice_start_nospace . ($self->_get_currentIndicePerLevel(-1) - 1) . $indice_end_nospace if ($currentLevel);
+      #
+      # Note the if ($currentLevel) at the end
+      #
+      $var .= $self->_get_concatenatedLevels(-1) . $indice_start_nospace . $currentIndicePerLevel . $indice_end_nospace if ($currentLevel);
       $self->_set_seen($refaddr, $var)
     }
   }
@@ -727,11 +731,11 @@ sub dsread {
       my $code = 'sub ' . B::Deparse->new($deparseopts)->coderef2text($item);
       my @code = split(/\R/, $code);
       #
-      # First item is no aligned
+      # First item is not aligned
       #
       $self->_pushDesc('code', shift(@code));
       #
-      # The first is aligned
+      # The rest is aligned
       #
       if (@code) {
         $self->_pushLevel($reftype);
@@ -837,7 +841,7 @@ sub _pushLevel {
   my ($self, $reftype) = @_;
 
   $self->_push_currentReftypePerLevel($reftype);
-  $self->_push_currentIndicePerLevel($reftype eq 'ARRAY' ? $[ : 0);       # $[ only used for ARRAY
+  $self->_push_currentIndicePerLevel($[ - 1);         # dsread() will increase it at every item
   $self->_currentLevel($self->_add_currentLevel(1));
   return
 }
