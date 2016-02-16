@@ -596,7 +596,7 @@ sub dsopen {
     if (my $currentLevel = $self->_currentLevel) {
       $self->_push_concatenatedLevels($self->_get_concatenatedLevels(-1) .
                                       $self->_indice_start_nospace .
-                                      $currentLevel .
+                                      ($self->_get_currentIndicePerLevel(-1) - 1) .
                                       $self->_indice_end_nospace)
     } else {
       $self->_push_concatenatedLevels('');
