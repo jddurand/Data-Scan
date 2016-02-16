@@ -30,6 +30,7 @@ Data::Scan::Impl::Printer is an example of an implementation of the Data::Scan::
 use B::Deparse;
 use Class::Inspector;
 use Moo;
+use MooX::HandlesVia;
 use Perl::OSType qw/is_os_type/;
 my $_HAVE_Win32__Console__ANSI;
 BEGIN {
@@ -413,18 +414,75 @@ has colors            => (is => 'ro', isa => HashRef[Str|Undef], default => sub 
                                     code            => 'yellow',
                                     already_scanned => 'green'
                                    }
-                          });
+                          },
+                         handles_via => 'Hash',
+                         handles => {
+                                     _keys_colors => 'keys',
+                                     _exists_colors => 'exists',
+                                     _get_colors => 'get'
+                                    });
 #
 # Internal attributes
 #
-has _lines                  => (is => 'rw', isa => ArrayRef);
-has _currentLevel           => (is => 'rw', isa => PositiveOrZeroInt);
-has _currentIndicePerLevel  => (is => 'rw', isa => ArrayRef[PositiveOrZeroInt]);
-has _currentReftypePerLevel => (is => 'rw', isa => ArrayRef[Str]);
-has _seen                   => (is => 'rw', isa => HashRef[PositiveOrZeroInt]);
+has _lines                  => (is => 'rw', isa => ArrayRef,
+                               handles_via => 'Array',
+                               handles => {
+                                           _set_lines => 'set',
+                                           _get_lines => 'get',
+                                           _push_lines => 'push',
+                                           _elements_lines => 'elements'
+                                          }
+                               );
+has _currentLevel           => (is => 'rw', isa => PositiveOrZeroInt,
+                               handles_via => 'Number',
+                               handles => {
+                                           _add_currentLevel => 'add',
+                                           _sub_currentLevel => 'sub'
+                                          }
+                               );
+has _currentIndicePerLevel  => (is => 'rw', isa => ArrayRef[PositiveOrZeroInt],
+                               handles_via => 'Array',
+                               handles => {
+                                           _get_currentIndicePerLevel => 'get',
+                                           _push_currentIndicePerLevel => 'push',
+                                           _pop_currentIndicePerLevel => 'pop',
+                                           _set_currentIndicePerLevel => 'set',
+                                          }
+                               );
+has _currentReftypePerLevel => (is => 'rw', isa => ArrayRef[Str],
+                               handles_via => 'Array',
+                               handles => {
+                                           _get_currentReftypePerLevel => 'get',
+                                           _push_currentReftypePerLevel => 'push',
+                                           _pop_currentReftypePerLevel => 'pop'
+                                          }
+                               );
+has _seen                   => (is => 'rw', isa => HashRef[PositiveOrZeroInt],
+                                handles_via => 'Hash',
+                                handles => {
+                                            _exists_seen => 'exists',
+                                            _get_seen => 'get',
+                                            _set_seen => 'set',
+                                           }
+                               );
 has _indice_start_nospace   => (is => 'rw', isa => Str);  # C.f. BUILD
 has _indice_end_nospace     => (is => 'rw', isa => Str);
-has _colors_cache           => (is => 'rw', isa => HashRef[Str]);
+has _colors_cache           => (is => 'rw', isa => HashRef[Str|Undef],
+                               handles_via => 'Hash',
+                               handles => {
+                                           _exists_colors_cache => 'exists',
+                                           _get_colors_cache => 'get',
+                                           _set_colors_cache => 'set'
+                                          }
+                               );
+has _concatenatedLevels     => (is => 'rw', isa => ArrayRef[Str],
+                               handles_via => 'Array',
+                               handles => {
+                                           _get_concatenatedLevels => 'get',
+                                           _push_concatenatedLevels => 'push',
+                                           _pop_concatenatedLevels => 'pop'
+                                          }
+                               );
 
 #
 # Required methods
@@ -446,6 +504,7 @@ sub dsstart  {
   $self->_currentIndicePerLevel([]);
   $self->_currentReftypePerLevel([]);
   $self->_seen({});
+  $self->_concatenatedLevels([]);
 
   my $indice_start_nospace = $self->indice_start;
   my $indice_end_nospace = $self->indice_end;
@@ -457,23 +516,28 @@ sub dsstart  {
   # Precompute color attributes
   #
   $self->_colors_cache({});
-  my $with_ansicolor = $self->with_ansicolor;
-  foreach (keys %{$self->colors}) {
-    my $color = $self->colors->{$_};
-    if ($with_ansicolor && defined($color)) {
-      my $colored = colored('dummy', $color);
-      #
-      # ANSI color spec is clear: attributes before the string, followed by
-      # the string, followed by "\e[0m". We do not support the eventual
-      # $EACHLINE hack.
-      #
-      if ($colored =~ /(.+)dummy\e\[0m$/) {
-        $self->_colors_cache->{$_} = substr($colored, $-[1], $+[1] - $-[1])
+  if ($self->with_ansicolor) {
+    foreach ($self->_keys_colors) {
+      my $color = $self->_get_colors($_);
+      if (defined($color)) {
+        my $colored = colored('dummy', $color);
+        #
+        # ANSI color spec is clear: attributes before the string, followed by
+        # the string, followed by "\e[0m". We do not support the eventual
+        # $EACHLINE hack.
+        #
+        if ($colored =~ /(.+)dummy\e\[0m$/) {
+          $self->_set_colors_cache($_, substr($colored, $-[1], $+[1] - $-[1]))
+        } else {
+          $self->_set_colors_cache($_, undef)
+        }
       } else {
-        $self->_colors_cache->{$_} = undef
+        $self->_set_colors_cache($_, undef)
       }
-    } else {
-      $self->_colors_cache->{$_} = undef
+    }
+  } else {
+    foreach ($self->_keys_colors) {
+      $self->_set_colors_cache($_, undef)
     }
   }
 
@@ -498,7 +562,7 @@ sub dsprint {
   my ($self, $handle) = @_;
 
   $handle //= $self->handle;
-  my $string = join($self->newline, @{$self->_lines});
+  my $string = join($self->newline, $self->_elements_lines);
   if (Scalar::Util::blessed($handle) && $handle->can('print')) {
     return $handle->print($string)
   } else {
@@ -522,7 +586,25 @@ sub dsopen {
   elsif ($reftype eq 'HASH')  { $self->_pushDesc('hash_start',  $self->hash_start)  }
   else                        { $self->_pushDesc('ref_start',   $self->ref_start)   }
 
-  $self->_pushLevel($reftype, $self->_currentReftypePerLevel, $self->_currentIndicePerLevel);
+  #
+  # Precompute the string describing previous level.
+  #
+  if ($self->with_indices_full) {
+    #
+    # Here $self->_currentLevel is the value before we increase it
+    #
+    if (my $currentLevel = $self->_currentLevel) {
+      $self->_push_concatenatedLevels($self->_get_concatenatedLevels(-1) .
+                                      $self->_indice_start_nospace .
+                                      $currentLevel .
+                                      $self->_indice_end_nospace)
+    } else {
+      $self->_push_concatenatedLevels('');
+    }
+  }
+
+  $self->_pushLevel($reftype);
+
   return
 }
 
@@ -535,7 +617,12 @@ Called when an unfolded content is closed.
 sub dsclose {
   my ($self, $item) = @_;
 
-  $self->_popLevel($self->_currentReftypePerLevel, $self->_currentIndicePerLevel);
+  #
+  # Remove precomputed string describing this level.
+  #
+  $self->_pop_concatenatedLevels if ($self->with_indices_full);
+
+  $self->_popLevel;
 
   my $reftype = reftype $item;
   if    ($reftype eq 'ARRAY') { $self->_pushLine; $self->_pushDesc('array_end', $self->array_end) }
@@ -564,15 +651,13 @@ sub dsread {
   my $indice_end                     = $self->indice_end;
   my $indice_start_nospace           = $self->_indice_start_nospace;
   my $indice_end_nospace             = $self->_indice_end_nospace;
-  my $currentReftypePerLevelArrayRef = $self->_currentReftypePerLevel;
-  my $currentIndicePerLevelArrayRef  = $self->_currentIndicePerLevel;
   #
   # Push a newline or a '=>' and prefix with indice if in a fold
   #
   my $currentLevel = $self->_currentLevel;
   if ($currentLevel) {
-    my $currentReftypePerLevel = $currentReftypePerLevelArrayRef->[-1];
-    my $currentIndicePerLevel = $currentIndicePerLevelArrayRef->[-1];
+    my $currentReftypePerLevel = $self->_get_currentReftypePerLevel(-1);
+    my $currentIndicePerLevel = $self->_get_currentIndicePerLevel(-1);
     if ($currentReftypePerLevel eq 'ARRAY' or $currentReftypePerLevel eq 'HASH') {
       my $show_indice;
       if ($currentReftypePerLevel eq 'ARRAY') {
@@ -590,11 +675,12 @@ sub dsread {
       }
       if ($show_indice) {
         if ($self->with_indices_full) {
-          my @levels = (
-                        $self->_concatenateLevels($currentLevel - 1, $indice_start_nospace, $currentIndicePerLevelArrayRef, $indice_end_nospace),
-                        $indice_start_nospace . $currentIndicePerLevel . $indice_end_nospace
-                       );
-          $self->_pushDesc('indice_full', join('', @levels))
+          #
+          # We know that $self->_concatenatedLevels is an ArrayRef.
+          # $currentLevel is a true value, this mean there is at least
+          # one element in $self->_concatenatedLevels.
+          #
+          $self->_pushDesc('indice_full', $self->_get_concatenatedLevels(-1) . $indice_start_nospace . $currentIndicePerLevel . $indice_end_nospace)
         } else {
           $self->_pushDesc('indice_start', $indice_start);
           $self->_pushDesc('indice_value', $currentIndicePerLevel);
@@ -602,16 +688,15 @@ sub dsread {
         }
       }
     }
-    $currentIndicePerLevelArrayRef->[-1]++
+    $self->_set_currentIndicePerLevel(-1, $self->_get_currentIndicePerLevel(-1) + 1)
   }
   #
   # See how this can be displayed
   #
   my $alreadyScanned;
   if ($refaddr) {
-    my $seen = $self->_seen;
-    if (exists $seen->{$refaddr}) {
-      $alreadyScanned = $seen->{$refaddr};
+    if ($self->_exists_seen($refaddr)) {
+      $alreadyScanned = $self->_get_seen($refaddr);
       #
       # Already scanned !
       #
@@ -620,8 +705,10 @@ sub dsread {
       #
       # Determine the "location" in terms of an hypothetical "@var" describing the tree
       # Note that we already increased $currentLevel
-      my @levels = $self->_concatenateLevels($currentLevel, $indice_start_nospace, $currentIndicePerLevelArrayRef, $indice_end_nospace);
-      $seen->{$refaddr} = 'var' . join('', @levels)
+      #
+      my $var = 'var';
+      $var .= $self->_get_concatenatedLevels(-1) . $indice_start_nospace . ($self->_get_currentIndicePerLevel(-1) - 1) . $indice_end_nospace if ($currentLevel);
+      $self->_set_seen($refaddr, $var)
     }
   }
   if (! $alreadyScanned) {
@@ -647,9 +734,9 @@ sub dsread {
       # The first is aligned
       #
       if (@code) {
-        $self->_pushLevel($reftype, $currentReftypePerLevelArrayRef, $currentIndicePerLevelArrayRef);
+        $self->_pushLevel($reftype);
         map { $self->_pushLine; $self->_pushDesc('code', $_) } @code;
-        $self->_popLevel($currentReftypePerLevelArrayRef, $currentIndicePerLevelArrayRef)
+        $self->_popLevel
       }
     } elsif ((! $reftype)
                ||
@@ -746,36 +833,28 @@ sub dsread {
 #
 # Internal methods
 #
-sub _concatenateLevels {
-  my ($self, $level, $indice_start, $currentIndicePerLevelArrayRef, $indice_end) = @_;
-  my @levels = ();
-  while ($level-- > 0) {
-    unshift(@levels, $indice_start . ($currentIndicePerLevelArrayRef->[$level] - 1) . $indice_end)
-  }
-  return @levels
-}
-
 sub _pushLevel {
-  my ($self, $reftype, $currentReftypePerLevelArrayRef, $currentIndicePerLevelArrayRef) = @_;
+  my ($self, $reftype) = @_;
 
-  push(@{$currentReftypePerLevelArrayRef}, $reftype);
-  push(@{$currentIndicePerLevelArrayRef}, $reftype eq 'ARRAY' ? $[ : 0);       # Only used for ARRAY
-  $self->_currentLevel($self->_currentLevel + 1);
+  $self->_push_currentReftypePerLevel($reftype);
+  $self->_push_currentIndicePerLevel($reftype eq 'ARRAY' ? $[ : 0);       # $[ only used for ARRAY
+  $self->_currentLevel($self->_add_currentLevel(1));
   return
 }
 
 sub _popLevel {
-  my ($self, $currentReftypePerLevelArrayRef, $currentIndicePerLevelArrayRef) = @_;
+  my ($self) = @_;
 
-  pop(@{$currentReftypePerLevelArrayRef});
-  pop(@{$currentIndicePerLevelArrayRef});
-  $self->_currentLevel($self->_currentLevel - 1);
+  $self->_pop_currentReftypePerLevel;
+  $self->_pop_currentIndicePerLevel;
+  $self->_currentLevel($self->_sub_currentLevel(1));
   return
 }
 
 sub _pushLine {
   my ($self) = @_;
-  push(@{$self->_lines}, ($self->indent x $self->_currentLevel));
+
+  $self->_push_lines($self->indent x $self->_currentLevel);
   return
 }
 
@@ -792,9 +871,9 @@ sub _pushDesc {
   #
   # We know that _colors_cache is a HashRef, and that _lines is an ArrayRef
   #
-  my $color_cache = $self->{_colors_cache}->{$what};
+  my $color_cache = $self->_exists_colors_cache($what) ? $self->_get_colors_cache($what) : undef;
   $desc = $color_cache . $desc . "\e[0m" if (defined($color_cache));
-  $self->{_lines}->[-1] .= $desc;
+  $self->_set_lines(-1, $self->_get_lines(-1) . $desc);
 
   return
 }
