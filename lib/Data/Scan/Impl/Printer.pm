@@ -774,16 +774,14 @@ sub _pushDesc {
 
   if ($self->with_ansicolor) {
     my $color = $self->colors->{$what};
+    # colors isa => HashRef[Str|ArrayRef|Undef]
     if (defined($color)) {
-      my $refcolor = reftype($color);
-      if (! $refcolor) {
+      if (! ref($color)) {                                     # Str case
         $self->_lines->[-1] .= colored($desc, $color);
-      } elsif ($refcolor eq 'ARRAY') {
+      } else {                                                 # ArrayRef case
         $self->_lines->[-1] .= colored($color, $desc);
-      } else {
-        $self->_lines->[-1] .= $desc;
       }
-    } else {
+    } else {                                                   # Undef case
       $self->_lines->[-1] .= $desc;
     }
   } else {
