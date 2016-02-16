@@ -172,7 +172,8 @@ Representation of internal indice count start. Default is '['.
 
 =cut
 
-has indice_start      => (is => 'ro', isa => Str,              default => sub { return '['       });
+has indice_start          => (is => 'ro', isa => Str,              default => sub { return '['       });
+has _indice_start_nospace => (is => 'rw', isa => Str);
 
 =head2 Str indice_end
 
@@ -180,7 +181,8 @@ Representation of internal indice count end. Default is ']'.
 
 =cut
 
-has indice_end        => (is => 'ro', isa => Str,              default => sub { return '] '      });
+has indice_end          => (is => 'ro', isa => Str,              default => sub { return '] '      });
+has _indice_end_nospace => (is => 'rw', isa => Str);
 
 =head2 Bool with_indices_full
 
@@ -422,6 +424,22 @@ has _currentLevel           => (is => 'rw', isa => PositiveOrZeroInt,           
 has _currentIndicePerLevel  => (is => 'rw', isa => ArrayRef[PositiveOrZeroInt], clearer => 1, lazy => 1, default => sub { [] });
 has _currentReftypePerLevel => (is => 'rw', isa => ArrayRef[Str],               clearer => 1, lazy => 1, default => sub { [] });
 has _seen                   => (is => 'rw', isa => HashRef[PositiveOrZeroInt],  clearer => 1, lazy => 1, default => sub { {} });
+
+sub BUILD {
+  my ($self) = @_;
+
+  my $indice_start_nospace = $self->indice_start;
+  my $indice_end_nospace = $self->indice_end;
+
+  $indice_start_nospace =~ s/\s//g;
+  $indice_end_nospace =~ s/\s//g;
+
+  $self->_indice_start_nospace($indice_start_nospace);
+  $self->_indice_end_nospace($indice_end_nospace);
+
+  return
+}
+
 #
 # Required methods
 #
@@ -524,10 +542,12 @@ sub dsread {
   #
   # Precompute things that always have the same value
   #
-  my $indice_start = $self->indice_start;
-  my $indice_end = $self->indice_end;
+  my $indice_start                   = $self->indice_start;
+  my $indice_end                     = $self->indice_end;
+  my $indice_start_nospace           = $self->_indice_start_nospace;
+  my $indice_end_nospace             = $self->_indice_end_nospace;
   my $currentReftypePerLevelArrayRef = $self->_currentReftypePerLevel;
-  my $currentIndicePerLevelArrayRef = $self->_currentIndicePerLevel;
+  my $currentIndicePerLevelArrayRef  = $self->_currentIndicePerLevel;
   #
   # Push a newline or a '=>' and prefix with indice if in a fold
   #
@@ -553,15 +573,10 @@ sub dsread {
       if ($show_indice) {
         if ($self->with_indices_full) {
           my @levels = (
-                        $self->_concatenateLevels($currentLevel - 1, $indice_start, $currentIndicePerLevelArrayRef, $indice_end),
-                        $indice_start . $currentIndicePerLevel . $indice_end
+                        $self->_concatenateLevels($currentLevel - 1, $indice_start_nospace, $currentIndicePerLevelArrayRef, $indice_end_nospace),
+                        $indice_start_nospace . $currentIndicePerLevel . $indice_end_nospace
                        );
-          #
-          # As in a \var reference (see below), we want the levels to not have eventual space
-          #
-          my $levels = join('', @levels);
-          $levels =~ s/\s//g;
-          $self->_pushDesc('indice_full', $levels)
+          $self->_pushDesc('indice_full', join('', @levels))
         } else {
           $self->_pushDesc('indice_start', $indice_start);
           $self->_pushDesc('indice_value', $currentIndicePerLevel);
@@ -587,13 +602,8 @@ sub dsread {
       #
       # Determine the "location" in terms of an hypothetical "@var" describing the tree
       # Note that we already increased $currentLevel
-      my @levels = $self->_concatenateLevels($currentLevel, $indice_start, $currentIndicePerLevelArrayRef, $indice_end);
-      #
-      # We want the levels to not have eventual space
-      #
-      my $levels = join('', @levels);
-      $levels =~ s/\s//g;
-      $seen->{$refaddr} = "var$levels"
+      my @levels = $self->_concatenateLevels($currentLevel, $indice_start_nospace, $currentIndicePerLevelArrayRef, $indice_end_nospace);
+      $seen->{$refaddr} = 'var' . join('', @levels)
     }
   }
   if (! $alreadyScanned) {
