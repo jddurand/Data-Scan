@@ -173,7 +173,6 @@ Representation of internal indice count start. Default is '['.
 =cut
 
 has indice_start          => (is => 'ro', isa => Str,              default => sub { return '['       });
-has _indice_start_nospace => (is => 'rw', isa => Str);
 
 =head2 Str indice_end
 
@@ -182,7 +181,6 @@ Representation of internal indice count end. Default is ']'.
 =cut
 
 has indice_end          => (is => 'ro', isa => Str,              default => sub { return '] '      });
-has _indice_end_nospace => (is => 'rw', isa => Str);
 
 =head2 Bool with_indices_full
 
@@ -280,9 +278,9 @@ Show loaded or resolved filename. Default is a false value.
 
 has with_filename     => (is => 'ro', isa => Bool,             default => sub { return !!0       });
 
-=head2 HashRef[Str|ArrayRef] colors
+=head2 HashRef[Str] colors
 
-Explicit ANSI color per functionality. The absence of a color definition means the corresponding value will be printed as-is. A color is defined following the Term::ANSIColor specification, as a string or an array reference.
+Explicit ANSI color per functionality. The absence of a color definition means the corresponding value will be printed as-is. A color is defined following the Term::ANSIColor specification, as a string.
 
 Supported keys of this hash and their eventual default setup is:
 
@@ -384,7 +382,7 @@ Already scanned reference. Such item will always be represented using "var[...]"
 
 =cut
 
-has colors            => (is => 'ro', isa => HashRef[Str|ArrayRef|Undef], default => sub {
+has colors            => (is => 'ro', isa => HashRef[Str|Undef], default => sub {
                             return {
                                     blessed         => 'bold',
                                     string          => undef,
@@ -419,26 +417,14 @@ has colors            => (is => 'ro', isa => HashRef[Str|ArrayRef|Undef], defaul
 #
 # Internal attributes
 #
-has _lines                  => (is => 'rw', isa => ArrayRef,                    clearer => 1, lazy => 1, default => sub { [ '' ] });
-has _currentLevel           => (is => 'rw', isa => PositiveOrZeroInt,           clearer => 1, lazy => 1, default => sub { 0 });
-has _currentIndicePerLevel  => (is => 'rw', isa => ArrayRef[PositiveOrZeroInt], clearer => 1, lazy => 1, default => sub { [] });
-has _currentReftypePerLevel => (is => 'rw', isa => ArrayRef[Str],               clearer => 1, lazy => 1, default => sub { [] });
-has _seen                   => (is => 'rw', isa => HashRef[PositiveOrZeroInt],  clearer => 1, lazy => 1, default => sub { {} });
-
-sub BUILD {
-  my ($self) = @_;
-
-  my $indice_start_nospace = $self->indice_start;
-  my $indice_end_nospace = $self->indice_end;
-
-  $indice_start_nospace =~ s/\s//g;
-  $indice_end_nospace =~ s/\s//g;
-
-  $self->_indice_start_nospace($indice_start_nospace);
-  $self->_indice_end_nospace($indice_end_nospace);
-
-  return
-}
+has _lines                  => (is => 'rw', isa => ArrayRef);
+has _currentLevel           => (is => 'rw', isa => PositiveOrZeroInt);
+has _currentIndicePerLevel  => (is => 'rw', isa => ArrayRef[PositiveOrZeroInt]);
+has _currentReftypePerLevel => (is => 'rw', isa => ArrayRef[Str]);
+has _seen                   => (is => 'rw', isa => HashRef[PositiveOrZeroInt]);
+has _indice_start_nospace   => (is => 'rw', isa => Str);  # C.f. BUILD
+has _indice_end_nospace     => (is => 'rw', isa => Str);
+has _colors_cache           => (is => 'rw', isa => HashRef[Str]);
 
 #
 # Required methods
@@ -454,11 +440,43 @@ Will be called when scanning is starting. It is resetting all internal attribute
 
 sub dsstart  {
   my ($self) = @_;
-  $self->_clear_lines;
-  $self->_clear_currentLevel;
-  $self->_clear_currentIndicePerLevel;
-  $self->_clear_currentReftypePerLevel;
-  $self->_clear_seen;
+
+  $self->_lines(['']);
+  $self->_currentLevel(0);
+  $self->_currentIndicePerLevel([]);
+  $self->_currentReftypePerLevel([]);
+  $self->_seen({});
+
+  my $indice_start_nospace = $self->indice_start;
+  my $indice_end_nospace = $self->indice_end;
+  $indice_start_nospace =~ s/\s//g;
+  $indice_end_nospace =~ s/\s//g;
+  $self->_indice_start_nospace($indice_start_nospace);
+  $self->_indice_end_nospace($indice_end_nospace);
+  #
+  # Precompute color attributes
+  #
+  $self->_colors_cache({});
+  my $with_ansicolor = $self->with_ansicolor;
+  foreach (keys %{$self->colors}) {
+    my $color = $self->colors->{$_};
+    if ($with_ansicolor && defined($color)) {
+      my $colored = colored('dummy', $color);
+      #
+      # ANSI color spec is clear: attributes before the string, followed by
+      # the string, followed by "\e[0m". We do not support the eventual
+      # $EACHLINE hack.
+      #
+      if ($colored =~ /(.+)dummy\e\[0m$/) {
+        $self->_colors_cache->{$_} = substr($colored, $-[1], $+[1] - $-[1])
+      } else {
+        $self->_colors_cache->{$_} = undef
+      }
+    } else {
+      $self->_colors_cache->{$_} = undef
+    }
+  }
+
   return
 }
 
@@ -771,22 +789,13 @@ sub _pushDesc {
     $desc =~ s/$_NON_ASCII_PRINT_RE/sprintf('\\x{%x}', ord(${^MATCH}))/egpo;
     $desc = '"' . $desc . '"'
   }
+  #
+  # We know that _colors_cache is a HashRef, and that _lines is an ArrayRef
+  #
+  my $color_cache = $self->{_colors_cache}->{$what};
+  $desc = $color_cache . $desc . "\e[0m" if (defined($color_cache));
+  $self->{_lines}->[-1] .= $desc;
 
-  if ($self->with_ansicolor) {
-    my $color = $self->colors->{$what};
-    # colors isa => HashRef[Str|ArrayRef|Undef]
-    if (defined($color)) {
-      if (! ref($color)) {                                     # Str case
-        $self->_lines->[-1] .= colored($desc, $color);
-      } else {                                                 # ArrayRef case
-        $self->_lines->[-1] .= colored($color, $desc);
-      }
-    } else {                                                   # Undef case
-      $self->_lines->[-1] .= $desc;
-    }
-  } else {
-    $self->_lines->[-1] .= $desc;
-  }
   return
 }
 
