@@ -27,9 +27,10 @@ Data::Scan::Impl::Printer is an example of an implementation of the Data::Scan::
 
 =cut
 
+use Moo;
+
 use B::Deparse;
 use Class::Inspector;
-use Moo;
 use MooX::HandlesVia;
 use Perl::OSType qw/is_os_type/;
 my $_HAVE_Win32__Console__ANSI;
