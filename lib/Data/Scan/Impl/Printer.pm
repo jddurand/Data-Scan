@@ -588,19 +588,15 @@ sub dsopen {
 
   #
   # Precompute the string describing previous level.
+  # Here $self->_currentLevel is the value before we increase it
   #
-  if ($self->with_indices_full) {
-    #
-    # Here $self->_currentLevel is the value before we increase it
-    #
-    if ($self->_currentLevel) {
-      $self->_push_concatenatedLevels($self->_get_concatenatedLevels(-1) .
-                                      $self->_indice_start_nospace .
-                                      $self->_get_currentIndicePerLevel(-1) .
-                                      $self->_indice_end_nospace)
-    } else {
-      $self->_push_concatenatedLevels('');
-    }
+  if ($self->_currentLevel) {
+    $self->_push_concatenatedLevels($self->_get_concatenatedLevels(-1) .
+                                    $self->_indice_start_nospace .
+                                    $self->_get_currentIndicePerLevel(-1) .
+                                    $self->_indice_end_nospace)
+  } else {
+    $self->_push_concatenatedLevels('');
   }
 
   $self->_pushLevel($reftype);
@@ -620,7 +616,7 @@ sub dsclose {
   #
   # Remove precomputed string describing this level.
   #
-  $self->_pop_concatenatedLevels if ($self->with_indices_full);
+  $self->_pop_concatenatedLevels;
 
   $self->_popLevel;
 
