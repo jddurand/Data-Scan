@@ -868,7 +868,7 @@ sub _pushDesc {
     # Detect any non ANSI character and enclose result within ""
     #
     $desc =~ s/$_NON_ASCII_PRINT_RE/sprintf('\\x{%x}', ord(${^MATCH}))/egpo;
-    $desc = '"' . $desc . '"'
+    $desc = "\"$desc\""
   }
   if ($self->with_ansicolor) {
     #
