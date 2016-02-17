@@ -425,40 +425,40 @@ has colors            => (is => 'ro', isa => HashRef[Str|Undef], default => sub 
 #
 # Internal attributes
 #
-has _lines                  => (is => 'rw', isa => ArrayRef,
-                               handles_via => 'Array',
-                               handles => {
-                                           _set_lines => 'set',
-                                           _get_lines => 'get',
-                                           _push_lines => 'push',
-                                           _elements_lines => 'elements'
-                                          }
+has _lines                  => (is => 'rwp', isa => ArrayRef,
+                                # handles_via => 'Array',
+                                # handles => {
+                                #             _set_lines => 'set',
+                                #             _get_lines => 'get',
+                                #             _push_lines => 'push',
+                                #             _elements_lines => 'elements'
+                                #            }
                                );
-has _currentLevel           => (is => 'rw', isa => PositiveOrZeroInt,
+has _currentLevel           => (is => 'rwp', isa => PositiveOrZeroInt,
                                handles_via => 'Number',
                                handles => {
                                            _add_currentLevel => 'add',
                                            _sub_currentLevel => 'sub'
                                           }
                                );
-has _currentIndicePerLevel  => (is => 'rw', isa => ArrayRef[PositiveOrZeroInt],
-                               handles_via => 'Array',
-                               handles => {
-                                           _get_currentIndicePerLevel => 'get',
-                                           _push_currentIndicePerLevel => 'push',
-                                           _pop_currentIndicePerLevel => 'pop',
-                                           _set_currentIndicePerLevel => 'set',
-                                          }
+has _currentIndicePerLevel  => (is => 'rwp', isa => ArrayRef[PositiveOrZeroInt],
+                                # handles_via => 'Array',
+                                # handles => {
+                                #             _get_currentIndicePerLevel => 'get',
+                                #             _push_currentIndicePerLevel => 'push',
+                                #             _pop_currentIndicePerLevel => 'pop',
+                                #             _set_currentIndicePerLevel => 'set',
+                                #            }
                                );
-has _currentReftypePerLevel => (is => 'rw', isa => ArrayRef[Str],
-                               handles_via => 'Array',
-                               handles => {
-                                           _get_currentReftypePerLevel => 'get',
-                                           _push_currentReftypePerLevel => 'push',
-                                           _pop_currentReftypePerLevel => 'pop'
-                                          }
+has _currentReftypePerLevel => (is => 'rwp', isa => ArrayRef[Str],
+                                # handles_via => 'Array',
+                                # handles => {
+                                #             _get_currentReftypePerLevel => 'get',
+                                #             _push_currentReftypePerLevel => 'push',
+                                #             _pop_currentReftypePerLevel => 'pop'
+                                #            }
                                );
-has _seen                   => (is => 'rw', isa => HashRef[PositiveOrZeroInt],
+has _seen                   => (is => 'rwp', isa => HashRef[PositiveOrZeroInt],
                                 handles_via => 'Hash',
                                 handles => {
                                             _exists_seen => 'exists',
@@ -466,9 +466,9 @@ has _seen                   => (is => 'rw', isa => HashRef[PositiveOrZeroInt],
                                             _set_seen => 'set',
                                            }
                                );
-has _indice_start_nospace   => (is => 'rw', isa => Str);  # C.f. BUILD
-has _indice_end_nospace     => (is => 'rw', isa => Str);
-has _colors_cache           => (is => 'rw', isa => HashRef[Str|Undef],
+has _indice_start_nospace   => (is => 'rwp', isa => Str);  # C.f. BUILD
+has _indice_end_nospace     => (is => 'rwp', isa => Str);
+has _colors_cache           => (is => 'rwp', isa => HashRef[Str|Undef],
                                handles_via => 'Hash',
                                handles => {
                                            _exists_colors_cache => 'exists',
@@ -476,13 +476,13 @@ has _colors_cache           => (is => 'rw', isa => HashRef[Str|Undef],
                                            _set_colors_cache => 'set'
                                           }
                                );
-has _concatenatedLevels     => (is => 'rw', isa => ArrayRef[Str],
-                               handles_via => 'Array',
-                               handles => {
-                                           _get_concatenatedLevels => 'get',
-                                           _push_concatenatedLevels => 'push',
-                                           _pop_concatenatedLevels => 'pop'
-                                          }
+has _concatenatedLevels     => (is => 'rwp', isa => ArrayRef[Str],
+                                # handles_via => 'Array',
+                                # handles => {
+                                #             _get_concatenatedLevels => 'get',
+                                #             _push_concatenatedLevels => 'push',
+                                #             _pop_concatenatedLevels => 'pop'
+                                #            }
                                );
 
 #
@@ -500,23 +500,23 @@ Will be called when scanning is starting. It is resetting all internal attribute
 sub dsstart  {
   my ($self) = @_;
 
-  $self->_lines(['']);
-  $self->_currentLevel(0);
-  $self->_currentIndicePerLevel([]);
-  $self->_currentReftypePerLevel([]);
-  $self->_seen({});
-  $self->_concatenatedLevels([]);
+  $self->_set__lines(['']);
+  $self->_set__currentLevel(0);
+  $self->_set__currentIndicePerLevel([]);
+  $self->_set__currentReftypePerLevel([]);
+  $self->_set__seen({});
+  $self->_set__concatenatedLevels([]);
 
   my $indice_start_nospace = $self->indice_start;
   my $indice_end_nospace = $self->indice_end;
   $indice_start_nospace =~ s/\s//g;
   $indice_end_nospace =~ s/\s//g;
-  $self->_indice_start_nospace($indice_start_nospace);
-  $self->_indice_end_nospace($indice_end_nospace);
+  $self->_set__indice_start_nospace($indice_start_nospace);
+  $self->_set__indice_end_nospace($indice_end_nospace);
   #
   # Precompute color attributes
   #
-  $self->_colors_cache({});
+  $self->_set__colors_cache({});
   if ($self->with_ansicolor) {
     foreach ($self->_keys_colors) {
       my $color = $self->_get_colors($_);
@@ -839,7 +839,7 @@ sub _pushLevel {
 
   $self->_push_currentReftypePerLevel($reftype);
   $self->_push_currentIndicePerLevel($[ - 1);         # dsread() will increase it at every item
-  $self->_currentLevel($self->_add_currentLevel(1));
+  $self->_set__currentLevel($self->_add_currentLevel(1));
   return
 }
 
@@ -848,7 +848,7 @@ sub _popLevel {
 
   $self->_pop_currentReftypePerLevel;
   $self->_pop_currentIndicePerLevel;
-  $self->_currentLevel($self->_sub_currentLevel(1));
+  $self->_set__currentLevel($self->_sub_currentLevel(1));
   return
 }
 
@@ -869,11 +869,13 @@ sub _pushDesc {
     $desc =~ s/$_NON_ASCII_PRINT_RE/sprintf('\\x{%x}', ord(${^MATCH}))/egpo;
     $desc = '"' . $desc . '"'
   }
-  #
-  # We know that _colors_cache is a HashRef, and that _lines is an ArrayRef
-  #
-  my $color_cache = $self->_exists_colors_cache($what) ? $self->_get_colors_cache($what) : undef;
-  $desc = $color_cache . $desc . "\e[0m" if (defined($color_cache));
+  if ($self->with_ansicolor) {
+    #
+    # We know that _colors_cache is a HashRef, and that _lines is an ArrayRef
+    #
+    my $color_cache = $self->_exists_colors_cache($what) ? $self->_get_colors_cache($what) : undef;
+    $desc = $color_cache . $desc . "\e[0m" if (defined($color_cache))
+  }
   $self->_set_lines(-1, $self->_get_lines(-1) . $desc);
 
   return
@@ -895,6 +897,42 @@ sub _canColor {
   return 0 if (is_os_type('Windows') && ! $_HAVE_Win32__Console__ANSI);
   return 1
 }
+
+#
+# MooX::HandlesVia is great but this is a performance killer.
+# I use it for design. And when I am happy I remove handles one
+# by one and provide myself the method that MooX::HandlesVia would
+# have delegated
+#
+# C.f. coming MooX::HandlesVia::Simple
+#
+my $_FIRST = $[;
+my $_SECOND = $[+1;
+my $_THIRD = $[+2;
+
+eval "sub _set_lines      { return \$_[$_FIRST]->{_lines}->[\$_[$_SECOND]] = \$_[$_THIRD] }";
+eval "sub _get_lines      { return \$_[$_FIRST]->{_lines}->[\$_[$_SECOND]]                }";
+eval "sub _push_lines     { return push(\@{\$_[$_FIRST]->{_lines}}, \@_[$_SECOND..\$#_])  }";
+eval "sub _pop_lines      { return pop(\@{\$_[$_FIRST]->{_lines}})                        }";
+eval "sub _elements_lines { return \@{\$_[$_FIRST]->{_lines}}                             }";
+
+eval "sub _set_currentIndicePerLevel      { return \$_[$_FIRST]->{_currentIndicePerLevel}->[\$_[$_SECOND]] = \$_[$_THIRD] }";
+eval "sub _get_currentIndicePerLevel      { return \$_[$_FIRST]->{_currentIndicePerLevel}->[\$_[$_SECOND]]                }";
+eval "sub _push_currentIndicePerLevel     { return push(\@{\$_[$_FIRST]->{_currentIndicePerLevel}}, \@_[$_SECOND..\$#_])  }";
+eval "sub _pop_currentIndicePerLevel      { return pop(\@{\$_[$_FIRST]->{_currentIndicePerLevel}})                        }";
+eval "sub _elements_currentIndicePerLevel { return \@{\$_[$_FIRST]->{_currentIndicePerLevel}}                             }";
+
+eval "sub _set_currentReftypePerLevel      { return \$_[$_FIRST]->{_currentReftypePerLevel}->[\$_[$_SECOND]] = \$_[$_THIRD] }";
+eval "sub _get_currentReftypePerLevel      { return \$_[$_FIRST]->{_currentReftypePerLevel}->[\$_[$_SECOND]]                }";
+eval "sub _push_currentReftypePerLevel     { return push(\@{\$_[$_FIRST]->{_currentReftypePerLevel}}, \@_[$_SECOND..\$#_])  }";
+eval "sub _pop_currentReftypePerLevel      { return pop(\@{\$_[$_FIRST]->{_currentReftypePerLevel}})                        }";
+eval "sub _elements_currentReftypePerLevel { return \@{\$_[$_FIRST]->{_currentReftypePerLevel}}                             }";
+
+eval "sub _set_concatenatedLevels      { return \$_[$_FIRST]->{_concatenatedLevels}->[\$_[$_SECOND]] = \$_[$_THIRD] }";
+eval "sub _get_concatenatedLevels      { return \$_[$_FIRST]->{_concatenatedLevels}->[\$_[$_SECOND]]                }";
+eval "sub _push_concatenatedLevels     { return push(\@{\$_[$_FIRST]->{_concatenatedLevels}}, \@_[$_SECOND..\$#_])  }";
+eval "sub _pop_concatenatedLevels      { return pop(\@{\$_[$_FIRST]->{_concatenatedLevels}})                        }";
+eval "sub _elements_concatenatedLevels { return \@{\$_[$_FIRST]->{_concatenatedLevels}}                             }";
 
 =head1 NOTES
 
