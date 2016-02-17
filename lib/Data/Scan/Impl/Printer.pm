@@ -416,12 +416,13 @@ has colors            => (is => 'ro', isa => HashRef[Str|Undef], default => sub 
                                     already_scanned => 'green'
                                    }
                           },
-                         handles_via => 'Hash',
-                         handles => {
-                                     _keys_colors => 'keys',
-                                     _exists_colors => 'exists',
-                                     _get_colors => 'get'
-                                    });
+                          # handles_via => 'Hash',
+                          # handles => {
+                          #             _keys_colors => 'keys',
+                          #             _exists_colors => 'exists',
+                          #             _get_colors => 'get'
+                          #            }
+                         );
 #
 # Internal attributes
 #
@@ -459,22 +460,22 @@ has _currentReftypePerLevel => (is => 'rwp', isa => ArrayRef[Str],
                                 #            }
                                );
 has _seen                   => (is => 'rwp', isa => HashRef[PositiveOrZeroInt],
-                                handles_via => 'Hash',
-                                handles => {
-                                            _exists_seen => 'exists',
-                                            _get_seen => 'get',
-                                            _set_seen => 'set',
-                                           }
+                                # handles_via => 'Hash',
+                                # handles => {
+                                #             _exists_seen => 'exists',
+                                #             _get_seen => 'get',
+                                #             _set_seen => 'set',
+                                #            }
                                );
 has _indice_start_nospace   => (is => 'rwp', isa => Str);  # C.f. BUILD
 has _indice_end_nospace     => (is => 'rwp', isa => Str);
 has _colors_cache           => (is => 'rwp', isa => HashRef[Str|Undef],
-                               handles_via => 'Hash',
-                               handles => {
-                                           _exists_colors_cache => 'exists',
-                                           _get_colors_cache => 'get',
-                                           _set_colors_cache => 'set'
-                                          }
+                                # handles_via => 'Hash',
+                                # handles => {
+                                #             _exists_colors_cache => 'exists',
+                                #             _get_colors_cache => 'get',
+                                #             _set_colors_cache => 'set'
+                                #            }
                                );
 has _concatenatedLevels     => (is => 'rwp', isa => ArrayRef[Str],
                                 # handles_via => 'Array',
@@ -873,10 +874,11 @@ sub _pushDesc {
     #
     # We know that _colors_cache is a HashRef, and that _lines is an ArrayRef
     #
-    my $color_cache = $self->_exists_colors_cache($what) ? $self->_get_colors_cache($what) : undef;
+    my $color_cache = $self->_get_colors_cache($what);  # Handled below if it does not exist or its value is undef
     $desc = $color_cache . $desc . "\e[0m" if (defined($color_cache))
   }
-  $self->_set_lines(-1, $self->_get_lines(-1) . $desc);
+  # $self->_set_lines(-1, $self->_get_lines(-1) . $desc);
+  $self->_append_lines(-1, $desc);
 
   return
 }
@@ -910,11 +912,12 @@ my $_FIRST = $[;
 my $_SECOND = $[+1;
 my $_THIRD = $[+2;
 
-eval "sub _set_lines      { return \$_[$_FIRST]->{_lines}->[\$_[$_SECOND]] = \$_[$_THIRD] }";
-eval "sub _get_lines      { return \$_[$_FIRST]->{_lines}->[\$_[$_SECOND]]                }";
-eval "sub _push_lines     { return push(\@{\$_[$_FIRST]->{_lines}}, \@_[$_SECOND..\$#_])  }";
-eval "sub _pop_lines      { return pop(\@{\$_[$_FIRST]->{_lines}})                        }";
-eval "sub _elements_lines { return \@{\$_[$_FIRST]->{_lines}}                             }";
+eval "sub _append_lines   { return \$_[$_FIRST]->{_lines}->[\$_[$_SECOND]] .= \$_[$_THIRD] }";
+eval "sub _set_lines      { return \$_[$_FIRST]->{_lines}->[\$_[$_SECOND]] = \$_[$_THIRD]  }";
+eval "sub _get_lines      { return \$_[$_FIRST]->{_lines}->[\$_[$_SECOND]]                 }";
+eval "sub _push_lines     { return push(\@{\$_[$_FIRST]->{_lines}}, \@_[$_SECOND..\$#_])   }";
+eval "sub _pop_lines      { return pop(\@{\$_[$_FIRST]->{_lines}})                         }";
+eval "sub _elements_lines { return \@{\$_[$_FIRST]->{_lines}}                              }";
 
 eval "sub _set_currentIndicePerLevel      { return \$_[$_FIRST]->{_currentIndicePerLevel}->[\$_[$_SECOND]] = \$_[$_THIRD] }";
 eval "sub _get_currentIndicePerLevel      { return \$_[$_FIRST]->{_currentIndicePerLevel}->[\$_[$_SECOND]]                }";
@@ -933,6 +936,21 @@ eval "sub _get_concatenatedLevels      { return \$_[$_FIRST]->{_concatenatedLeve
 eval "sub _push_concatenatedLevels     { return push(\@{\$_[$_FIRST]->{_concatenatedLevels}}, \@_[$_SECOND..\$#_])  }";
 eval "sub _pop_concatenatedLevels      { return pop(\@{\$_[$_FIRST]->{_concatenatedLevels}})                        }";
 eval "sub _elements_concatenatedLevels { return \@{\$_[$_FIRST]->{_concatenatedLevels}}                             }";
+
+eval "sub _keys_colors   { return keys %{\$_[$_FIRST]->{colors}}                         }";
+eval "sub _exists_colors { return exists \$_[$_FIRST]->{colors}->{\$_[$_SECOND]}         }";
+eval "sub _get_colors    { return \$_[$_FIRST]->{colors}->{\$_[$_SECOND]}                }";
+eval "sub _set_colors    { return \$_[$_FIRST]->{colors}->{\$_[$_SECOND]} = \$_[$_THIRD] }";
+
+eval "sub _keys_seen   { return keys %{\$_[$_FIRST]->{_seen}}                         }";
+eval "sub _exists_seen { return exists \$_[$_FIRST]->{_seen}->{\$_[$_SECOND]}         }";
+eval "sub _get_seen    { return \$_[$_FIRST]->{_seen}->{\$_[$_SECOND]}                }";
+eval "sub _set_seen    { return \$_[$_FIRST]->{_seen}->{\$_[$_SECOND]} = \$_[$_THIRD] }";
+
+eval "sub _keys_colors_cache   { return keys %{\$_[$_FIRST]->{_colors_cache}}                         }";
+eval "sub _exists_colors_cache { return exists \$_[$_FIRST]->{_colors_cache}->{\$_[$_SECOND]}         }";
+eval "sub _get_colors_cache    { return \$_[$_FIRST]->{_colors_cache}->{\$_[$_SECOND]}                }";
+eval "sub _set_colors_cache    { return \$_[$_FIRST]->{_colors_cache}->{\$_[$_SECOND]} = \$_[$_THIRD] }";
 
 =head1 NOTES
 
