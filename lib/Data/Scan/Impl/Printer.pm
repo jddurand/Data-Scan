@@ -31,7 +31,7 @@ use Moo;
 
 use B::Deparse;
 use Class::Inspector;
-use MooX::HandlesVia;
+use MooX::HandlesVia::Simple -replace => 1;
 use Perl::OSType qw/is_os_type/;
 my $_HAVE_Win32__Console__ANSI;
 BEGIN {
@@ -416,74 +416,75 @@ has colors            => (is => 'ro', isa => HashRef[Str|Undef], default => sub 
                                     already_scanned => 'green'
                                    }
                           },
-                          # handles_via => 'Hash',
-                          # handles => {
-                          #             _keys_colors => 'keys',
-                          #             _exists_colors => 'exists',
-                          #             _get_colors => 'get'
-                          #            }
+                          handles_via => 'Hash',
+                          handles => {
+                                      _keys_colors => 'keys',
+                                      _exists_colors => 'exists',
+                                      _get_colors => 'get'
+                                     }
                          );
 #
 # Internal attributes
 #
 has _lines                  => (is => 'rwp', isa => ArrayRef,
-                                # handles_via => 'Array',
-                                # handles => {
-                                #             _set_lines => 'set',
-                                #             _get_lines => 'get',
-                                #             _push_lines => 'push',
-                                #             _elements_lines => 'elements'
-                                #            }
+                                handles_via => 'Array',
+                                handles => {
+                                            _set_lines => 'set',
+                                            _get_lines => 'get',
+                                            _push_lines => 'push',
+                                            _append_lines => 'append',
+                                            _elements_lines => 'elements'
+                                           }
                                );
 has _currentLevel           => (is => 'rwp', isa => PositiveOrZeroInt,
-                               handles_via => 'Number',
-                               handles => {
-                                           _add_currentLevel => 'add',
-                                           _sub_currentLevel => 'sub'
-                                          }
+                                handles_via => 'Number',
+                                handles => {
+                                            _add_currentLevel => 'add',
+                                            _sub_currentLevel => 'sub'
+                                           }
                                );
 has _currentIndicePerLevel  => (is => 'rwp', isa => ArrayRef[PositiveOrZeroInt],
-                                # handles_via => 'Array',
-                                # handles => {
-                                #             _get_currentIndicePerLevel => 'get',
-                                #             _push_currentIndicePerLevel => 'push',
-                                #             _pop_currentIndicePerLevel => 'pop',
-                                #             _set_currentIndicePerLevel => 'set',
-                                #            }
+                                handles_via => 'Array',
+                                handles => {
+                                            _get_currentIndicePerLevel => 'get',
+                                            _push_currentIndicePerLevel => 'push',
+                                            _pop_currentIndicePerLevel => 'pop',
+                                            _set_currentIndicePerLevel => 'set',
+                                           }
                                );
 has _currentReftypePerLevel => (is => 'rwp', isa => ArrayRef[Str],
-                                # handles_via => 'Array',
-                                # handles => {
-                                #             _get_currentReftypePerLevel => 'get',
-                                #             _push_currentReftypePerLevel => 'push',
-                                #             _pop_currentReftypePerLevel => 'pop'
-                                #            }
+                                handles_via => 'Array',
+                                handles => {
+                                            _get_currentReftypePerLevel => 'get',
+                                            _push_currentReftypePerLevel => 'push',
+                                            _pop_currentReftypePerLevel => 'pop'
+                                           }
                                );
 has _seen                   => (is => 'rwp', isa => HashRef[PositiveOrZeroInt],
-                                # handles_via => 'Hash',
-                                # handles => {
-                                #             _exists_seen => 'exists',
-                                #             _get_seen => 'get',
-                                #             _set_seen => 'set',
-                                #            }
+                                handles_via => 'Hash',
+                                handles => {
+                                            _exists_seen => 'exists',
+                                            _get_seen => 'get',
+                                            _set_seen => 'set',
+                                           }
                                );
 has _indice_start_nospace   => (is => 'rwp', isa => Str);  # C.f. BUILD
 has _indice_end_nospace     => (is => 'rwp', isa => Str);
 has _colors_cache           => (is => 'rwp', isa => HashRef[Str|Undef],
-                                # handles_via => 'Hash',
-                                # handles => {
-                                #             _exists_colors_cache => 'exists',
-                                #             _get_colors_cache => 'get',
-                                #             _set_colors_cache => 'set'
-                                #            }
+                                handles_via => 'Hash',
+                                handles => {
+                                            _exists_colors_cache => 'exists',
+                                            _get_colors_cache => 'get',
+                                            _set_colors_cache => 'set'
+                                           }
                                );
 has _concatenatedLevels     => (is => 'rwp', isa => ArrayRef[Str],
-                                # handles_via => 'Array',
-                                # handles => {
-                                #             _get_concatenatedLevels => 'get',
-                                #             _push_concatenatedLevels => 'push',
-                                #             _pop_concatenatedLevels => 'pop'
-                                #            }
+                                handles_via => 'Array',
+                                handles => {
+                                            _get_concatenatedLevels => 'get',
+                                            _push_concatenatedLevels => 'push',
+                                            _pop_concatenatedLevels => 'pop'
+                                           }
                                );
 
 #
@@ -840,7 +841,7 @@ sub _pushLevel {
 
   $self->_push_currentReftypePerLevel($reftype);
   $self->_push_currentIndicePerLevel($[ - 1);         # dsread() will increase it at every item
-  $self->_set__currentLevel($self->_add_currentLevel(1));
+  $self->_add_currentLevel(1);
   return
 }
 
@@ -849,7 +850,7 @@ sub _popLevel {
 
   $self->_pop_currentReftypePerLevel;
   $self->_pop_currentIndicePerLevel;
-  $self->_set__currentLevel($self->_sub_currentLevel(1));
+  $self->_sub_currentLevel(1);
   return
 }
 
@@ -899,58 +900,6 @@ sub _canColor {
   return 0 if (is_os_type('Windows') && ! $_HAVE_Win32__Console__ANSI);
   return 1
 }
-
-#
-# MooX::HandlesVia is great but this is a performance killer.
-# I use it for design. And when I am happy I remove handles one
-# by one and provide myself the method that MooX::HandlesVia would
-# have delegated
-#
-# C.f. coming MooX::HandlesVia::Simple
-#
-my $_FIRST = $[;
-my $_SECOND = $[+1;
-my $_THIRD = $[+2;
-
-eval "sub _append_lines   { return \$_[$_FIRST]->{_lines}->[\$_[$_SECOND]] .= \$_[$_THIRD] }";
-eval "sub _set_lines      { return \$_[$_FIRST]->{_lines}->[\$_[$_SECOND]] = \$_[$_THIRD]  }";
-eval "sub _get_lines      { return \$_[$_FIRST]->{_lines}->[\$_[$_SECOND]]                 }";
-eval "sub _push_lines     { return push(\@{\$_[$_FIRST]->{_lines}}, \@_[$_SECOND..\$#_])   }";
-eval "sub _pop_lines      { return pop(\@{\$_[$_FIRST]->{_lines}})                         }";
-eval "sub _elements_lines { return \@{\$_[$_FIRST]->{_lines}}                              }";
-
-eval "sub _set_currentIndicePerLevel      { return \$_[$_FIRST]->{_currentIndicePerLevel}->[\$_[$_SECOND]] = \$_[$_THIRD] }";
-eval "sub _get_currentIndicePerLevel      { return \$_[$_FIRST]->{_currentIndicePerLevel}->[\$_[$_SECOND]]                }";
-eval "sub _push_currentIndicePerLevel     { return push(\@{\$_[$_FIRST]->{_currentIndicePerLevel}}, \@_[$_SECOND..\$#_])  }";
-eval "sub _pop_currentIndicePerLevel      { return pop(\@{\$_[$_FIRST]->{_currentIndicePerLevel}})                        }";
-eval "sub _elements_currentIndicePerLevel { return \@{\$_[$_FIRST]->{_currentIndicePerLevel}}                             }";
-
-eval "sub _set_currentReftypePerLevel      { return \$_[$_FIRST]->{_currentReftypePerLevel}->[\$_[$_SECOND]] = \$_[$_THIRD] }";
-eval "sub _get_currentReftypePerLevel      { return \$_[$_FIRST]->{_currentReftypePerLevel}->[\$_[$_SECOND]]                }";
-eval "sub _push_currentReftypePerLevel     { return push(\@{\$_[$_FIRST]->{_currentReftypePerLevel}}, \@_[$_SECOND..\$#_])  }";
-eval "sub _pop_currentReftypePerLevel      { return pop(\@{\$_[$_FIRST]->{_currentReftypePerLevel}})                        }";
-eval "sub _elements_currentReftypePerLevel { return \@{\$_[$_FIRST]->{_currentReftypePerLevel}}                             }";
-
-eval "sub _set_concatenatedLevels      { return \$_[$_FIRST]->{_concatenatedLevels}->[\$_[$_SECOND]] = \$_[$_THIRD] }";
-eval "sub _get_concatenatedLevels      { return \$_[$_FIRST]->{_concatenatedLevels}->[\$_[$_SECOND]]                }";
-eval "sub _push_concatenatedLevels     { return push(\@{\$_[$_FIRST]->{_concatenatedLevels}}, \@_[$_SECOND..\$#_])  }";
-eval "sub _pop_concatenatedLevels      { return pop(\@{\$_[$_FIRST]->{_concatenatedLevels}})                        }";
-eval "sub _elements_concatenatedLevels { return \@{\$_[$_FIRST]->{_concatenatedLevels}}                             }";
-
-eval "sub _keys_colors   { return keys %{\$_[$_FIRST]->{colors}}                         }";
-eval "sub _exists_colors { return exists \$_[$_FIRST]->{colors}->{\$_[$_SECOND]}         }";
-eval "sub _get_colors    { return \$_[$_FIRST]->{colors}->{\$_[$_SECOND]}                }";
-eval "sub _set_colors    { return \$_[$_FIRST]->{colors}->{\$_[$_SECOND]} = \$_[$_THIRD] }";
-
-eval "sub _keys_seen   { return keys %{\$_[$_FIRST]->{_seen}}                         }";
-eval "sub _exists_seen { return exists \$_[$_FIRST]->{_seen}->{\$_[$_SECOND]}         }";
-eval "sub _get_seen    { return \$_[$_FIRST]->{_seen}->{\$_[$_SECOND]}                }";
-eval "sub _set_seen    { return \$_[$_FIRST]->{_seen}->{\$_[$_SECOND]} = \$_[$_THIRD] }";
-
-eval "sub _keys_colors_cache   { return keys %{\$_[$_FIRST]->{_colors_cache}}                         }";
-eval "sub _exists_colors_cache { return exists \$_[$_FIRST]->{_colors_cache}->{\$_[$_SECOND]}         }";
-eval "sub _get_colors_cache    { return \$_[$_FIRST]->{_colors_cache}->{\$_[$_SECOND]}                }";
-eval "sub _set_colors_cache    { return \$_[$_FIRST]->{_colors_cache}->{\$_[$_SECOND]} = \$_[$_THIRD] }";
 
 =head1 NOTES
 
