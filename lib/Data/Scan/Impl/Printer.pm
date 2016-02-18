@@ -31,7 +31,7 @@ use Moo;
 
 use B::Deparse;
 use Class::Inspector;
-use MooX::HandlesVia::Simple -replace => 1;
+use MooX::HandlesVia::Dirty -replace => 1;
 use Perl::OSType qw/is_os_type/;
 my $_HAVE_Win32__Console__ANSI;
 BEGIN {
