@@ -86,6 +86,11 @@ Indicates to the consumer that scanning is ending. Return value of consumer->end
 
 =cut
 
+#
+# Avoid calls to arybase
+#
+my $ARRAY_START_INDICE = $[;
+
 sub process {
   my ($self) = shift;
 
@@ -101,10 +106,10 @@ sub process {
     #
     # First our private thingies
     #
-    while (@_ && ref $_[$[]) {
-      if    ($openaddr  == refaddr $_[$[]) { $consumer->dsopen ((splice @_, $[, 2)[-1]) }
-      elsif ($closeaddr == refaddr $_[$[]) { $consumer->dsclose((splice @_, $[, 2)[-1]) }
-      else                                 { last }
+    while (@_ && ref $_[$ARRAY_START_INDICE]) {
+      if    ($openaddr  == refaddr $_[$ARRAY_START_INDICE]) { $consumer->dsopen ((splice @_, $ARRAY_START_INDICE, 2)[-1]) }
+      elsif ($closeaddr == refaddr $_[$ARRAY_START_INDICE]) { $consumer->dsclose((splice @_, $ARRAY_START_INDICE, 2)[-1]) }
+      else                                                  { last }
     }
     #
     # Consumer's dsread() returns eventual inner content
