@@ -193,11 +193,11 @@ has indice_end          => (is => 'ro', isa => Str,              default => sub 
 
 =head2 Bool with_indices_full
 
-Use full internal indice representation, i.e. show indices from the top level up to current level, as if the tree would have been only composed of array references to array references, and so on. Default is a true value.
+Use full internal indice representation, i.e. show indices from the top level up to current level, as if the tree would have been only composed of array references to array references, and so on. Default is a false value.
 
 =cut
 
-has with_indices_full => (is => 'ro', isa => Bool,             default => sub { return !!1       });
+has with_indices_full => (is => 'ro', isa => Bool,             default => sub { return !!0       });
 
 =head2 Str address_start
 
@@ -273,11 +273,11 @@ has with_deparse      => (is => 'ro', isa => Bool,             default => sub { 
 
 =head2 Bool with_methods
 
-Show public, private and inherited methods. Default is a true value.
+Show public, private and inherited methods. Default is a false value.
 
 =cut
 
-has with_methods      => (is => 'ro', isa => Bool,             default => sub { return !!1       });
+has with_methods      => (is => 'ro', isa => Bool,             default => sub { return !!0       });
 
 =head2 Bool with_filename
 
@@ -429,15 +429,16 @@ has colors            => (is => 'ro', isa => HashRef[Str|Undef], default => sub 
 # and because they are internal we give us the right to access them
 # in the dirty way
 #
-has _lines                  => (is => 'rwp', isa => ArrayRef);
-has _currentLevel           => (is => 'rwp', isa => PositiveOrZeroInt);
-has _currentIndicePerLevel  => (is => 'rwp', isa => ArrayRef[PositiveOrZeroInt]);
-has _currentReftypePerLevel => (is => 'rwp', isa => ArrayRef[Str]);
-has _seen                   => (is => 'rwp', isa => HashRef[PositiveOrZeroInt]);
-has _indice_start_nospace   => (is => 'rwp', isa => Str);  # C.f. BUILD
-has _indice_end_nospace     => (is => 'rwp', isa => Str);
-has _colors_cache           => (is => 'rwp', isa => HashRef[Str|Undef]);
-has _concatenatedLevels     => (is => 'rwp', isa => ArrayRef[Str]);
+has _lines                  => (is => 'rwp', isa => Undef|ArrayRef[ArrayRef]);
+has _currentLevel           => (is => 'rwp', isa => Undef|PositiveOrZeroInt);
+has _currentIndicePerLevel  => (is => 'rwp', isa => Undef|ArrayRef[PositiveOrZeroInt]);
+has _currentReftypePerLevel => (is => 'rwp', isa => Undef|ArrayRef[Str]);
+has _seen                   => (is => 'rwp', isa => Undef|HashRef[PositiveOrZeroInt]);
+has _indice_start_nospace   => (is => 'rwp', isa => Undef|Str);  # C.f. BUILD
+has _indice_end_nospace     => (is => 'rwp', isa => Undef|Str);
+has _colors_cache           => (is => 'rwp', isa => Undef|HashRef[Str|Undef]);
+has _concatenatedLevels     => (is => 'rwp', isa => Undef|ArrayRef[Str]);
+has _output                 => (is => 'rwp', isa => Str);
 
 #
 # Required methods
@@ -454,7 +455,7 @@ Will be called when scanning is starting. It is resetting all internal attribute
 sub dsstart  {
   my ($self) = @_;
 
-  $self->_set__lines(['']);
+  $self->_set__lines([[]]);
   $self->_set__currentLevel(0);
   $self->_set__currentIndicePerLevel([]);
   $self->_set__currentReftypePerLevel([]);
@@ -496,6 +497,8 @@ sub dsstart  {
     }
   }
 
+  $self->_set__output('');
+
   return
 }
 
@@ -505,7 +508,23 @@ Will be called when scanning is ending. Returns a true value.
 
 =cut
 
-sub dsend { return !!1 }
+sub dsend {
+  my ($self) = @_;
+
+  $self->_set__output(join($self->newline, map { join('', @{$_}) } @{$self->{_lines}}));
+
+  $self->_set__lines                 (undef);
+  $self->_set__currentLevel          (undef);
+  $self->_set__currentIndicePerLevel (undef);
+  $self->_set__currentReftypePerLevel(undef);
+  $self->_set__seen                  (undef);
+  $self->_set__indice_start_nospace  (undef);
+  $self->_set__indice_end_nospace    (undef);
+  $self->_set__colors_cache          (undef);
+  $self->_set__concatenatedLevels    (undef);
+
+  return !!1
+}
 
 =head2 dsprint
 
@@ -517,11 +536,10 @@ sub dsprint {
   my ($self, $handle) = @_;
 
   $handle //= $self->handle;
-  my $string = join($self->newline, @{$self->{_lines}});
   if (Scalar::Util::blessed($handle) && $handle->can('print')) {
-    return $handle->print($string)
+    return $handle->print($self->_output)
   } else {
-    return print $handle $string
+    return print $handle $self->_output
   }
 }
 
@@ -815,7 +833,7 @@ sub _popLevel {
 sub _pushLine {
   my ($self) = @_;
 
-  return push(@{$self->{_lines}}, $self->indent x $self->{_currentLevel});
+  return push(@{$self->{_lines}}, [ $self->indent x $self->{_currentLevel} ]);
 }
 
 sub _pushDesc {
@@ -835,7 +853,7 @@ sub _pushDesc {
     my $color_cache = $self->{_colors_cache}->{$what};  # Handled below if it does not exist or its value is undef
     $desc = $color_cache . $desc . "\e[0m" if (defined($color_cache))
   }
-  $self->{_lines}->[-1] .= $desc;
+  push(@{$self->{_lines}->[-1]}, $desc);
 
   return
 }
