@@ -1,6 +1,33 @@
 Changelog for Data-Scan
 
-0.004 2016-02-13T06:33:41
+0.005 2016-02-20T11:57:05
+ [Jean-Damien Durand <jeandamiendurand@free.fr>]
+ - Impl/Printer: changed defaults of with_indices_full and with_methods to
+   a false value, clear memory at dsend()
+ - Impl/Printer.pm: Removal of MooX::HandlesVia dependency
+ - Data/Scan.pm: Avoid too many calls to arybase
+ - Impl/Printer.pm MooX::HandlesVia::Simple will be MooX::HandlesVia::Dirty
+ - Impl/Printer.pm: use MooX::HandlesVia::Simple -replace => 1
+ - Impl/Printer.pm: $desc = "\"$desc\"" is fast than $desc = " . $desc . "
+ - Impl/Printer.pm: MooX::HandlesVia::Simple like optim
+ - Impl/Printer.pm: In preparation of MooX::HandlesVia::Simple
+ - Impl/Printer.pm: put Moo first in the use statements
+ - Impl/Printer.pm: bug fix when with_indices_full => 0
+ - Impl/Printer.pm: make _currentIndicePerLevel really current indice
+   instead of next value
+ - Impl/Printer.pm: fix concatenatedLevels string
+ - Impl/Printer.pm: use handles_via
+ - Impl/Printer.pm: colored calls profiling
+ - Impl/Printer.pm: _pushDesc() profiling
+ - Impl/Printer.pm: Profiling bis
+ - Impl/Printer.pm: Profiling
+ - Impl/Printer.pm: Added 0x32 (space) to printable characters
+ - dist.ini: Add Authority
+ - Data/Scan.pm: removed unused import
+ - Data/Scan.pm: Mention of link to Data::Scan::Printer
+ - Scan/Printer.pm: ABSTRACT fix
+
+0.004 2016-02-13T06:33:41Z
  [Jean-Damien Durand <jeandamiendurand@free.fr>]
  - dzil xtest && max_depth option for Impl/Printer.pm
  - A lot of POD

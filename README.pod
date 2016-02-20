@@ -8,7 +8,7 @@ Data::Scan - Stackfree arbitrary data scanner
 
 =head1 VERSION
 
-version 0.004
+version 0.005
 
 =head1 SYNOPSIS
 
@@ -29,7 +29,7 @@ Data::Scan is a stackfree scanner of arbitrary data. It has no other intelligenc
 
 =head2 consumer
 
-A object instance that is consuming the Data::Scan::Role::Consumer role.
+A object instance that is consuming the Data::Scan::Role::Consumer role. L<Data::Scan::Printer> is an example of an implementation consuming this role.
 
 =head1 SUBROUTINES/METHODS
 
@@ -69,7 +69,7 @@ Indicates to the consumer that scanning is ending. Return value of consumer->end
 
 =head1 SEE ALSO
 
-L<Data::Scan::Role::Consumer>
+L<Data::Scan::Role::Consumer>, L<Data::Scan::Printer>
 
 =for :stopwords cpan testmatrix url annocpan anno bugtracker rt cpants kwalitee diff irc mailto metadata placeholders metacpan
 
