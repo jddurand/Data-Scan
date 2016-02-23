@@ -1,6 +1,14 @@
 Changelog for Data-Scan
 
-0.005 2016-02-20T11:57:05
+0.006 2016-02-23T06:23:08
+ [Jean-Damien Durand <jeandamiendurand@free.fr>]
+ - dist.ini: stopwords = bufferize
+ - Buffered mode, enabled by default, to handle arbitrary large data
+ - Data/Scan.pm: change a comment in the SYNOPSIS
+ - t/printer.t: show how to pass options when using dspp()
+ - POD fixes
+
+0.005 2016-02-20T11:57:05Z
  [Jean-Damien Durand <jeandamiendurand@free.fr>]
  - Impl/Printer: changed defaults of with_indices_full and with_methods to
    a false value, clear memory at dsend()
