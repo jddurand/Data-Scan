@@ -11,7 +11,7 @@ package Data::Scan::Impl::Printer;
 
 =head1 DESCRIPTION
 
-Data::Scan::Impl::Printer is an example of an implementation of the Data::Scan::Role::Consumer role. This implementation is sort of Data::Printer alternative.
+Data::Scan::Impl::Printer is an example of an implementation of the L<Data::Scan::Role::Consumer> role.
 
 =head1 SYNOPSIS
 
@@ -881,7 +881,7 @@ If with_methods option is on, L<Class::Inspector> (and not L<Package::Stash> lik
 
 =head1 SEE ALSO
 
-L<Class::Inspector>, L<Data::Scan::Impl::Printer>, L<Term::ANSIColor>, L<Win32::Console::ANSI>
+L<Class::Inspector>, L<Data::Scan::Printer>, L<Term::ANSIColor>, L<Win32::Console::ANSI>
 
 =cut
 

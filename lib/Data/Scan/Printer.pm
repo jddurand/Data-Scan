@@ -25,7 +25,7 @@ extends 'Data::Scan';
 
 =head1 DESCRIPTION
 
-Data::Scan::Printer is polluting user's namespace with a dspp() method, showing our Data::Scan can be used to dump an arbitrary structure.
+Data::Scan::Printer is polluting user's namespace with a dspp() method, showing how Data::Scan can be used to dump an arbitrary structure. This is a sort of L<Data::Printer> alternative.
 
 =head1 SYNOPSIS
 
