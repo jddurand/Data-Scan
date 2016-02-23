@@ -22,7 +22,7 @@ Data::Scan is a stackfree scanner of arbitrary data. It has no other intelligenc
     use strict;
     use warnings FATAL => 'all';
     use Data::Scan;
-    use Data::Scan::Impl::Printer;  # Basic example that is doing an indented print
+    use Data::Scan::Impl::Printer;  # A Data::Printer implementation example
 
     my $this = bless([ 'var1', 'var2', {'a' => 'b', 'c' => 'd'}, \undef, \\undef, [] ], 'TEST');
     my $consumer = Data::Scan::Impl::Printer->new;
