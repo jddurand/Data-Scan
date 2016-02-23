@@ -20,6 +20,12 @@ my $this = bless([ 'var1',
                    }
                  ], 'Test');
 push(@{$this}, { self => $this, dspp => Data::Scan::Printer->new });
+local %Data::Scan::Printer::Option = (
+                                      #
+                                      # Options here
+                                      #
+                                      with_deparse => 1
+                                     );
 dspp($this);
 done_testing();
 
