@@ -23,7 +23,6 @@ Data::Scan::Impl::Printer is an example of an implementation of the L<Data::Scan
     my $this = bless([ 'var1', 'var2', {'a' => 'b', 'c' => 'd'}, \undef, \\undef, [], sub { return 'something' } ], 'TEST');
     my $consumer = Data::Scan::Impl::Printer->new(with_deparse => 1);
     Data::Scan->new(consumer => $consumer)->process($this);
-    $consumer->dsprint;
 
 =cut
 
@@ -65,7 +64,7 @@ Here the list of supported options, every name is preceded by its type.
 
 =head2 FileHandle handle
 
-Handle for for dsprint(). Default is \*STDOUT.
+Handle for the output. Default is \*STDOUT.
 
 =cut
 
@@ -287,6 +286,14 @@ Show loaded or resolved filename. Default is a false value.
 
 has with_filename     => (is => 'ro', isa => Bool,             default => sub { return !!0       });
 
+=head2 Bool buffered
+
+If a true value, bufferize the output and print it only at the end of the processing, otherwise print it item per item, the later is less efficient but also memory-friendly in case of large data. Default is a false value.
+
+=cut
+
+has buffered          => (is => 'ro', isa => Bool,             default => sub { return !!0       });
+
 =head2 HashRef[Str] colors
 
 Explicit ANSI color per functionality. The absence of a color definition means the corresponding value will be printed as-is. A color is defined following the Term::ANSIColor specification, as a string.
@@ -438,7 +445,6 @@ has _indice_start_nospace   => (is => 'rwp', isa => Undef|Str);  # C.f. BUILD
 has _indice_end_nospace     => (is => 'rwp', isa => Undef|Str);
 has _colors_cache           => (is => 'rwp', isa => Undef|HashRef[Str|Undef]);
 has _concatenatedLevels     => (is => 'rwp', isa => Undef|ArrayRef[Str]);
-has _output                 => (is => 'rwp', isa => Str);
 
 #
 # Required methods
@@ -497,8 +503,6 @@ sub dsstart  {
     }
   }
 
-  $self->_set__output('');
-
   return
 }
 
@@ -511,7 +515,13 @@ Will be called when scanning is ending. Returns a true value.
 sub dsend {
   my ($self) = @_;
 
-  $self->_set__output(join($self->newline, map { join('', @{$_}) } @{$self->{_lines}}));
+  #
+  # Buffered or not, we always "flush" what remains in the _lines.
+  # In fact, in the buffered mode, the previous call can be
+  # a dsclose(), that may push new characters, and  there is no call
+  # to _print in the later.
+  #
+  $self->_print;
 
   $self->_set__lines                 (undef);
   $self->_set__currentLevel          (undef);
@@ -526,21 +536,20 @@ sub dsend {
   return !!1
 }
 
-=head2 dsprint
+sub _print {
+  my ($self) = @_;
 
-Print current output to $self->handle. If $self->handle is blessed and can do the 'print' method, this will be used. Otherwise, $self->handle will be considered eligible for the native perl's print command. Returns a string.
+  return if (! @{$self->{_lines}});
 
-=cut
-
-sub dsprint {
-  my ($self, $handle) = @_;
-
-  $handle //= $self->handle;
+  my $output = join($self->newline, map { join('', @{$_}) } @{$self->{_lines}});
+  my $handle = $self->handle;
   if (Scalar::Util::blessed($handle) && $handle->can('print')) {
-    return $handle->print($self->_output)
+    $handle->print($output)
   } else {
-    return print $handle $self->_output
+    print $handle $output
   }
+
+  return $self->_set__lines([[]])
 }
 
 =head2 dsopen
@@ -574,7 +583,6 @@ sub dsopen {
   }
 
   $self->_pushLevel($reftype);
-
   return
 }
 
@@ -596,7 +604,7 @@ sub dsclose {
 
   my $reftype = reftype $item;
   if    ($reftype eq 'ARRAY') { $self->_pushLine; $self->_pushDesc('array_end', $self->array_end) }
-  elsif ($reftype eq 'HASH')  { $self->_pushLine; $self->_pushDesc('hash_end', $self->hash_end)   }
+  elsif ($reftype eq 'HASH')  { $self->_pushLine; $self->_pushDesc('hash_end',  $self->hash_end)  }
   else                        {                   $self->_pushDesc('ref_end',   $self->ref_end)   }
 
   return
@@ -753,63 +761,64 @@ sub dsread {
   #
   # Prepare return value
   #
-  my $rc;
+  my ($rc, $max_depth);
   #
   # Max depth option value ?
   #
-  my $max_depth = $self->max_depth;
-  return $rc if ($max_depth && $currentLevel >= $max_depth);
-  #
-  # Unfold if not already done and if this can be unfolded
-  #
-  if (! $alreadyScanned) {
-    if ($reftype) {
-      if ($reftype eq 'ARRAY') {
-        $rc = $item
-      } elsif ($reftype eq 'HASH') {
-        $rc = [ map { $_ => $item->{$_} } sort { ($a // '') cmp ($b // '') } keys %{$item} ]
-      } elsif ($reftype eq 'SCALAR') {
-        $rc = [ ${$item} ]
-      } elsif ($reftype eq 'REF') {
-        $rc = [ ${$item} ]
+  if (! ($max_depth = $self->max_depth) || ($currentLevel < $max_depth)) {
+    #
+    # Unfold if not already done and if this can be unfolded
+    #
+    if (! $alreadyScanned) {
+      if ($reftype) {
+        if ($reftype eq 'ARRAY') {
+          $rc = $item
+        } elsif ($reftype eq 'HASH') {
+          $rc = [ map { $_ => $item->{$_} } sort { ($a // '') cmp ($b // '') } keys %{$item} ]
+        } elsif ($reftype eq 'SCALAR') {
+          $rc = [ ${$item} ]
+        } elsif ($reftype eq 'REF') {
+          $rc = [ ${$item} ]
+        }
       }
-    }
-    if ($blessed && $self->with_methods) {
-      $rc //= [];
-      my $expanded = Class::Inspector->methods($blessed, 'expanded');
-      if (defined($expanded) && reftype($expanded) eq 'ARRAY') {
-        my @expanded = @{$expanded};
-        my %public_methods =
-          map  { $_->[$ARRAY_START_INDICE_PLUS_2] => $_->[$ARRAY_START_INDICE_PLUS_3] }
-          grep { $_->[$ARRAY_START_INDICE_PLUS_2] !~ /^\_/   }
-          grep { $_->[$ARRAY_START_INDICE_PLUS_1] eq $blessed }
-          @expanded;
-        my %private_methods =
-          map  { $_->[$ARRAY_START_INDICE_PLUS_2] => $_->[$ARRAY_START_INDICE_PLUS_3] }
-          grep { $_->[$ARRAY_START_INDICE_PLUS_2] =~ /^\_/   }
-          grep { $_->[$ARRAY_START_INDICE_PLUS_1] eq $blessed }
-          @expanded;
-        my %inherited_methods =
-          map  { $_->[$ARRAY_START_INDICE_PLUS_2] => $_->[$ARRAY_START_INDICE_PLUS_3] }
-          grep { $_->[$ARRAY_START_INDICE_PLUS_1] ne $blessed } @expanded;
-        push(@{$rc}, {
-                      public_methods     => \%public_methods,
-                      private_methods    => \%private_methods,
-                      inherited_methods  => \%inherited_methods
-                     }
-            )
-      }
-      if ($self->with_filename) {
-        if (Class::Inspector->loaded($blessed)) {
-          push(@{$rc}, { filename => Class::Inspector->loaded_filename($blessed) })
-        } else {
-          push(@{$rc}, { filename => Class::Inspector->resolved_filename($blessed) })
+      if ($blessed && $self->with_methods) {
+        $rc //= [];
+        my $expanded = Class::Inspector->methods($blessed, 'expanded');
+        if (defined($expanded) && reftype($expanded) eq 'ARRAY') {
+          my @expanded = @{$expanded};
+          my %public_methods =
+            map  { $_->[$ARRAY_START_INDICE_PLUS_2] => $_->[$ARRAY_START_INDICE_PLUS_3] }
+            grep { $_->[$ARRAY_START_INDICE_PLUS_2] !~ /^\_/   }
+            grep { $_->[$ARRAY_START_INDICE_PLUS_1] eq $blessed }
+            @expanded;
+          my %private_methods =
+            map  { $_->[$ARRAY_START_INDICE_PLUS_2] => $_->[$ARRAY_START_INDICE_PLUS_3] }
+            grep { $_->[$ARRAY_START_INDICE_PLUS_2] =~ /^\_/   }
+            grep { $_->[$ARRAY_START_INDICE_PLUS_1] eq $blessed }
+            @expanded;
+          my %inherited_methods =
+            map  { $_->[$ARRAY_START_INDICE_PLUS_2] => $_->[$ARRAY_START_INDICE_PLUS_3] }
+            grep { $_->[$ARRAY_START_INDICE_PLUS_1] ne $blessed } @expanded;
+          push(@{$rc}, {
+                        public_methods     => \%public_methods,
+                        private_methods    => \%private_methods,
+                        inherited_methods  => \%inherited_methods
+                       }
+              )
+        }
+        if ($self->with_filename) {
+          if (Class::Inspector->loaded($blessed)) {
+            push(@{$rc}, { filename => Class::Inspector->loaded_filename($blessed) })
+          } else {
+            push(@{$rc}, { filename => Class::Inspector->resolved_filename($blessed) })
+          }
         }
       }
     }
   }
 
-  $rc
+  $self->_print unless $self->buffered;
+  return $rc
 }
 #
 # Internal methods

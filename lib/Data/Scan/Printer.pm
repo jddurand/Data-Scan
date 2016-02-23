@@ -46,12 +46,7 @@ Print to Data::Scan::Impl::Printer's handle a dumped vision of @arguments. An in
 =cut
 
 sub dspp {
-  my $consumer = Data::Scan::Impl::Printer->new(%Option);
-  __PACKAGE__->new(consumer => $consumer)->process(@_);
-  #
-  # We know this consumer has a dsprint method
-  #
-  $consumer->dsprint
+  __PACKAGE__->new(consumer => Data::Scan::Impl::Printer->new(%Option))->process(@_)
 }
 
 =head1 SEE ALSO
