@@ -1,6 +1,12 @@
 Changelog for Data-Scan
 
-0.006 2016-02-23T06:23:08
+0.007 2017-02-22T06:12:38
+ [Jean-Damien Durand <jeandamiendurand@free.fr>]
+ - Added B::Deparse in the SEE ALSO section
+ - Fallback to a "without deparse" mode if deparse of a code ref raise an
+   exception
+
+0.006 2016-02-23T06:23:08Z
  [Jean-Damien Durand <jeandamiendurand@free.fr>]
  - dist.ini: stopwords = bufferize
  - Buffered mode, enabled by default, to handle arbitrary large data
