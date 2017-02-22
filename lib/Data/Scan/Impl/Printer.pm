@@ -894,7 +894,7 @@ If with_methods option is on, L<Class::Inspector> (and not L<Package::Stash> lik
 
 =head1 SEE ALSO
 
-L<Class::Inspector>, L<Data::Scan::Printer>, L<Term::ANSIColor>, L<Win32::Console::ANSI>
+L<B::Deparse>, L<Class::Inspector>, L<Data::Scan::Printer>, L<Term::ANSIColor>, L<Win32::Console::ANSI>
 
 =cut
 
