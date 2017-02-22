@@ -266,6 +266,8 @@ has with_hash_indice  => (is => 'ro', isa => Bool,             default => sub { 
 
 Show deparsed subroutine references. Default is a false value.
 
+If deparse raise an exception, the current item is shown as if with_deparse would be off, i.e. a classic stringification resulting in something like e.g. C<CODE(0x...)>.
+
 =cut
 
 has with_deparse      => (is => 'ro', isa => Bool,             default => sub { return !!0       });
@@ -706,7 +708,8 @@ sub dsread {
       #
       my $i = length($self->indent) x ($self->{_currentLevel} + 2);
       my $deparseopts = ["-sCv'Useless const omitted'"];
-      my $code = 'sub ' . B::Deparse->new($deparseopts)->coderef2text($item);
+      my $code = eval { 'sub ' . B::Deparse->new($deparseopts)->coderef2text($item) };
+      goto CODE_fallback if $@;
       my @code = split(/\R/, $code);
       #
       # First item is not aligned
@@ -732,6 +735,7 @@ sub dsread {
       #
       # Stringify if possible everything that we do not unfold
       #
+      CODE_fallback:
       if (defined($item)) {
         my $string = eval { "$item" }; ## no critic qw/BuiltinFunctions::ProhibitStringyEval/
         if (defined($string)) {
