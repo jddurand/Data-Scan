@@ -60,9 +60,9 @@ Scan over all items in @arguments and will call the consumer with these five met
 
 =over
 
-=item $consumer->dsstart()
+=item $consumer->dsstart(Any @arguments)
 
-Indicates to the consumer that scanning is starting. Return value is ignored.
+Indicates to the consumer that scanning is starting. All initial arguments are sent to this method. Return value is ignored.
 
 =item $consumer->dsopen(Any $item)
 
@@ -98,7 +98,7 @@ sub process {
   #
   # Start
   #
-  $consumer->dsstart();
+  $consumer->dsstart(@_);
   #
   # Loop
   #

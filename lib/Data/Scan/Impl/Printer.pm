@@ -461,7 +461,7 @@ Will be called when scanning is starting. It is resetting all internal attribute
 =cut
 
 sub dsstart  {
-  my ($self) = @_;
+  my ($self, @args) = @_;
 
   $self->_set__lines([[]]);
   $self->_set__currentLevel(0);
