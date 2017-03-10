@@ -1,6 +1,10 @@
 Changelog for Data-Scan
 
-0.007 2017-02-22T06:12:38
+0.008 2017-03-10T04:28:55
+ [Jean-Damien Durand <jeandamiendurand@free.fr>]
+ - Add initial arguments to dsstart()
+
+0.007 2017-02-22T06:12:38Z
  [Jean-Damien Durand <jeandamiendurand@free.fr>]
  - Added B::Deparse in the SEE ALSO section
  - Fallback to a "without deparse" mode if deparse of a code ref raise an
